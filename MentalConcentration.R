@@ -12,6 +12,7 @@ library(olsrr)
 library(ggcorrplot)
 library(zeallot)
 library(pheatmap)
+library(leaps)
 source('./utils.R')
 
 #==============================   CONFIG     ============================
@@ -91,7 +92,62 @@ possibleInteractions = list(
 dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
 inspectLm(modelWithPossibleDependencies, 5)
 
+#====================  BEST SUBSET INTERACTIONS   ==========================
 
+#add non linearities for best subset
+possibleInteractions = list(
+  'X_Temperature*X_AvgPlayerValue',
+  'X_AvgPlayerValue*X_SupportersImpact',
+  'X_AvgGoalConcededLastMatches*X_AvgPlayerValue'
+)                       
+ds_nl = addNonLinearities(ds, 'X_Temperature*X_AvgPlayerValue',
+                          'X_AvgPlayerValue*X_SupportersImpact',
+                          'X_AvgGoalConcededLastMatches*X_AvgPlayerValue',
+                          'I(X_MatchRelevance^2)')    
+
+
+leaps <- regsubsets(Y_MentalConcentration ~ .,
+                    data=ds_nl,
+                    nbest = 1, nvmax=length(ds_nl), intercept=TRUE, method="exhaustive")
+summary(leaps)
+
+X <- summary(leaps)$which
+xvars <- dimnames(X)[[2]][-1]
+responsevar <- Y_LABEL
+
+
+
+best_subsets <- vector("list", dim(X)[1])
+
+
+
+## loop through all rows / model specifications
+for (i in 1:dim(X)[1]) {
+  id <- X[i, ]
+  form <- reformulate(xvars[which(id[-1])], responsevar, id[1])
+  best_subsets[[i]] <- lm(form, data=ds_nl)
+}
+
+
+
+summary(best_subsets[[7]])
+best_MSEs = vector(length=PREDICTORS_NUMBER)
+temp_lm = 0
+for(i in 1:length(best_subsets)) {
+  print(i)
+  cnames = colnames(best_subsets[[i]]$model)
+  yname = cnames[1]
+  xnames = cnames[2:length(cnames)]
+  f = paste(xnames, collapse = ' + ')
+  f = paste(yname, "~", f)
+  temp_lm = lm(f, data=ds_nl, y=T, x=T)
+  print(f)
+  best_MSEs[i] = mean_cvMSE(temp_lm, 5)
+}
+
+
+
+plot(best_MSEs)
 
 # ========== best subset con interazioni =================
 
