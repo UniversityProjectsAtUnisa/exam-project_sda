@@ -12,192 +12,89 @@ library(olsrr)
 library(ggcorrplot)
 library(zeallot)
 library(pheatmap)
+source('./utils.R')
 
-#============================== functions ===============================
+#==============================   CONFIG     ============================
 
-#compute MSE , media su più cross validation
+ABS_PATH = 'C:/Users/marco/Documents/UNISA/SDA/progetto/SDAgruppo2'
+DATASET_FILENAME = 'RegressionData_SDA_AH_group2.csv'
+Y_LABEL = 'Y_MentalConcentration'
+PREDICTORS_NUMBER = 10
 
-mean_cvMSE = function(model, n=1000, k=5){
-  MSEs = vector(mode='numeric',n)
-  for (i in 1:n){
-    MSEs[i] = cv.lm(model, k = k)$MSE$mean
-  }
-  return(mean(MSEs))
-}
+#================================ START =================================
 
-lmByIndices <- function (dataset, indices, addIntercept=T) {
-  f <- paste(names(dataset)[Y_index], "~")
-  if(!addIntercept){
-    f <- paste(f,"0 + ")
-  }
-  f <- paste(f, paste(names(dataset)[indices], collapse=" + "))
-  return(lm(f, data=myds, y=T, x=T))
-}
-
-mse = function(predicted,actual){ mean( ( predicted-actual )^2 ) }
-
-mostra_grafici = function(dataset, predictors, y_index){
-  for (i in 1:predictors){
-    plot(dataset[,i], dataset[,y_index], ylab=names(dataset)[y_index],xlab=names(dataset)[i])
-    readline(prompt="Press [enter] to continue")
-  }
-}
-
-#============================== start     ===============================
-
-setwd('C:\\Users\\carbo\\OneDrive\\Documenti\\Magistrale Carbone\\2 sem\\Statistical Data Analysis\\aPROGETTO')
-myds=read.csv('RegressionData_SDA_AH_group2.csv') 
-myds=na.omit(myds)
-col_names <- colnames(myds)
-
-# Inserire interazioni nella matrice prima di scalare
-#interazioni
-i_vector = c('X_Temperature'   , 'X_SupportersImpact', 'X_AvgGoalConcededLastMatches', 'X_MatchRelevance' )
-j_vector = c('X_AvgPlayerValue', 'X_AvgPlayerValue'  , 'X_AvgPlayerValue',             'X_MatchRelevance')
-
-myds_col_names = names(myds)
-
-for(k in 1:length(i_vector)){
-  i = which(names(myds)== i_vector[k]) 
-  j = which(names(myds)== j_vector[k]) 
-  myds = cbind(myds, myds[,i]*myds[,j])
-  myds_col_names = c(myds_col_names, paste(myds_col_names[i], "*", myds_col_names[j],sep = ""))
-}
-names(myds) = myds_col_names
-
-###################
-Y_index = 17
-myds = cbind(myds[,1:10], myds[,19:length(myds)],myds[,Y_index])
-names(myds)[length(myds)]='Y_MentalConcentration'
-myds_scaled=data.frame()
-
-myds_scaled=cbind(as.data.frame(scale(myds[,1:14])), myds[,15])
-
-col_names <- colnames(myds)
-col_names_scaled = colnames(myds_scaled)
-colnames(myds_scaled) = col_names
-Y_index = 17
-predictors = 10
-
-#========= regressione senza interazioni =================
-
-reg_base=lmByIndices(myds, 1:predictors)
-rsquared=summary(reg_base)$r.squared
-
-# analizzo le relazioni
-mostra_grafici(myds, predictors, Y_index)
-#dall'analisi dei grafici vedo che
-#X_Temperature -> quadrato
-#X_AvgPlayerValue -> forma a S, log?
-#X_MatchRelevance -> quadrato?
-#supportersImpact -> sqrt?
-
-model_complesso = lm(Y_MentalConcentration ~
-                      #I(X_Temperature^2)
-                    +  X_RestTimeFromLastMatch
-                     + (X_AvgPlayerValue)
-                     + I(X_MatchRelevance^2)
-                     #+ sqrt(X_SupportersImpact)
-                     ,data=myds, y=TRUE,x=TRUE)
-summary(model_complesso)
-
-plot(model_complesso, which=1)
+setwd(ABS_PATH)
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
 
 
-mean_cvMSE(model_complesso, 5)
-mean_cvMSE(reg_base, 5)
+#==================== REGRESSION WITHOUT INTERACTIONS ====================
 
-#model complesso va meglio
+reg_base=lm.byIndices(ds, -1)
+inspectLm(reg_base, 5)
 
 
-############## interazioni ##################
-# visualizzo le interazioni rilevanti
+#====================== INSPECT RELATIONSHIPS ============================
 
-interaction_matrix=matrix(0, predictors-1, predictors-1) # matrice di R^2 con tutte le interazioni
-for(i in 1:(predictors-1) ){
-  for(j in (i+1):predictors){
-    f <- paste(names(myds)[Y_index], "~", paste(names(myds)[-( (predictors+1):ncol(myds) )], collapse=" + "))# "v1 ~ v2 + v3 + v4"
-    f=paste(f,"+",names(myds)[i],"*",names(myds)[j])
-    mylm=lm(f, data=myds)
-    interaction_matrix[i,j-1]=summary(mylm)$r.squared
-  }
-}
+showPlotsAgainstOutput(ds, 2:PREDICTORS_NUMBER+1)
 
-colnames(interaction_matrix) <- col_names[2:predictors]
-rownames(interaction_matrix) <- col_names[1:(predictors-1)]
 
-View(interaction_matrix)
 
-pheatmap(as.data.frame(interaction_matrix),
-         display_numbers = T, 
-         #breaks = seq(0.8,0.9,length=10),
-         color = colorRampPalette(c("navy", "white", "firebrick3"))(50))
+#======================== TEST RELATIONSHIPS =============================
 
-#prova interazione: modello complesso + X_Temperature * X_AvgPlayerValue
-model_interazioni_temp_value = lm(Y_MentalConcentration ~
-                       +  X_RestTimeFromLastMatch
-                       + (X_AvgPlayerValue)
-                       + I(X_MatchRelevance^2)
-                       + X_Temperature * X_AvgPlayerValue
-                     ,data=myds, y=TRUE,x=TRUE)
-summary(model_interazioni_temp_value)
+possibleDependencies = list('X_RestTimeFromLastMatch', 
+                            'X_AvgPlayerValue', 
+                            'I(X_MatchRelevance^2)')
 
-mean_cvMSE(model_interazioni_temp_value, 10,10) # MSE=1.779052
-reg_base_mse = mean_cvMSE(reg_base, 5)
+dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
+inspectLm(modelWithPossibleDependencies, 5)
 
-#prova interazione: modello complesso + X_AvgGoalConcededLastMatches * X_AvgPlayerValue
 
-model_interazioni_goal_value = lm(Y_MentalConcentration ~
-                                    +  X_RestTimeFromLastMatch
-                                  + (X_AvgPlayerValue)
-                                  + I(X_MatchRelevance^2)
-                                  + X_AvgGoalConcededLastMatches * X_AvgPlayerValue
-                                  ,data=myds, y=TRUE,x=TRUE)
-summary(model_interazioni_goal_value)
 
-mean_cvMSE(model_interazioni_goal_value, 5) #MSE=2.042071
+#======================== INSPECT INTERACTIONS =============================
 
-#prova interazione: modello complesso + X_AvgGoalConcededLastMatches * X_AvgPlayerValue
-#                                     + X_Temperature * X_AvgPlayerValue
+# Collect rsquared for every linear model obtained by adding every possible
+# interaction between two distinct predictors to the base model.
+# Set base rsquared as default value
+#
+# The matrix will be store as an upper triangular matrix 
+# for computational efficiency
 
-model_interazioni_goal_temp_value = lm(Y_MentalConcentration ~
-                                    +  X_RestTimeFromLastMatch
-                                  + (X_AvgPlayerValue)
-                                  + I(X_MatchRelevance^2)
-                                  + X_AvgGoalConcededLastMatches * X_AvgPlayerValue
-                                  + X_Temperature * X_AvgPlayerValue
-                                  ,data=myds, y=TRUE,x=TRUE)
-summary(model_interazioni_goal_temp_value)
+base_rsquared = summary( lm.byIndices(ds, -1) )$r.squared
+interactionMatrix = inspectInteractionMatrix(ds, default=base_rsquared, showHeatmap = T)
 
-mean_cvMSE(model_interazioni_goal_temp_value, 5) #MSE=1.829902
 
-#prova interazione: modello compelsso + X_SupportersImpact * X_AvgPlayerValue
-#+ X_AvgGoalConcededLastMatches * X_AvgPlayerValue
-#+ X_Temperature * X_AvgPlayerValue
-# varie combinazioni
-model_interazioni_supp_value= lm(Y_MentalConcentration ~
-                                         +  X_RestTimeFromLastMatch
-                                       + (X_AvgPlayerValue)
-                                       + I(X_MatchRelevance^2)
-                                       + X_AvgGoalConcededLastMatches * X_AvgPlayerValue
-                                       + X_SupportersImpact * X_AvgPlayerValue
-                                       #+ X_Temperature * X_AvgPlayerValue
-                                       ,data=myds, y=TRUE,x=TRUE)
-summary(model_interazioni_supp_value)
 
-mean_cvMSE(model_interazioni_supp_value, 10, 10) 
-#MSE no temp_value      : 1.492497 - 1.439522
-#MSE no goal_value      : 1.660607
-#MSE no supporter_value : 1.921177
-#MSE tutte e 3 le interazioni : 1.706468
+#========================  TEST INTERACTIONS   =============================
 
-#il miglior modello è model_interazioni_supp_value
+possibleDependencies = list('X_RestTimeFromLastMatch', 'X_AvgPlayerValue', 'I(X_MatchRelevance^2)')
+
+possibleInteractions = list('X_Temperature*X_AvgPlayerValue')
+dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
+inspectLm(dependencyModelWithPossibleInteractions, 5)
+
+
+possibleInteractions = list('X_AvgGoalConcededLastMatches*X_AvgPlayerValue')
+dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
+inspectLm(dependencyModelWithPossibleInteractions, 5)
+
+
+possibleInteractions = list('X_AvgGoalConcededLastMatches*X_AvgPlayerValue', 'X_Temperature*X_AvgPlayerValue')
+dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
+inspectLm(dependencyModelWithPossibleInteractions, 5)
+
+
+possibleInteractions = list(
+  'X_SupportersImpact*X_AvgPlayerValue', 
+  'X_AvgGoalConcededLastMatches*X_AvgPlayerValue', 
+  'X_Temperature*X_AvgPlayerValue'
+)
+dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
+inspectLm(modelWithPossibleDependencies, 5)
 
 
 
 # ========== best subset con interazioni =================
-predictors=10
-Y_index = 17
+
 myds_col_names = names(myds)[1:predictors]
 myds_interactions = data.frame(myds[,1:predictors])
 
@@ -279,7 +176,25 @@ plot(best_MSEs) #il best model è proprio quello che avevo trovato prima con i
 mean_cvMSE(best_model, 10, 10)
 
 
-############# RIDGE E LASSO - ELASTIC NET #########################
+
+#===============  RIDGE E LASSO - ELASTIC NET   ===================
+
+############# ADD NON LINEARITIES BEFORE SCALING ##################
+
+ds = addNonLinearities(ds, 'X_Temperature*X_AvgPlayerValue',
+                       'X_SupportersImpact*X_AvgGoalConcededLastMatches',
+                       'X_MatchRelevance*X_AvgPlayerValue',
+                       'X_AvgPlayerValue*X_MatchRelevance',
+                       'I(X_Temperature^2)',
+                       'I(X_SupportersImpact^3)',
+                       'I(X_AvgGoalConcededLastMatches^2)',
+                       'I(X_MatchRelevance^5)',
+                       'I(X_AvgPlayerValue^1)',
+                       'myfunc(X_AvgPlayerValue)',
+                       'myfunc(X_Temperature)'
+)
+scaled_ds = ds.scale(ds)
+
 
 lambda_grid = 10^seq(10, -3, length = 2000)
 #set.seed(1)
