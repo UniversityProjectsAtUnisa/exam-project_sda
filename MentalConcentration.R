@@ -103,7 +103,7 @@ possibleInteractions = list(
   'X_AvgGoalConcededLastMatches*X_AvgPlayerValue'
 )    
 
-bestSubsets = bestSubsetSelection(ds, interactions=possibleInteractions, nMSE=2, folds=2, verbose=T)
+bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=2, folds=2, verbose=T, method="exhaustive")
 ds.prettyPlot(bestSubsets$MSE, xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
 
 bestSubset = bestSubsets$model[[which.min(bestSubsets$MSE)]]

@@ -258,6 +258,83 @@ bestSubsetSelection <- function(data, interactions, nMSE=1000, folds=5, verbose=
   return(bestSubsets)
 } 
 
+bestSubsetSelection <- function (data, relationships, nMSE=1000, folds=5, method) {
+  switch (method,
+          exhaustive={
+            return(exhaustiveSubsetSelection(data, relationships, nMSE, folds))
+          },
+          forward={
+            polynomial_regex = POLYNOMIAL_REGEX
+            polynomial_chunks = str_match(relationships, polynomial_regex)[, 1]
+            polynomial_chunks = polynomial_chunks[!is.na(polynomial_chunks)]
+            
+            
+            functional_regex = FUNCTIONAL_REGEX
+            functional_chunks = str_match(relationships, functional_regex)[, 1]
+            functional_chunks = functional_chunks[!is.na(functional_chunks)]
+            return(forwardSubsetSelection(data, 
+                                          relationships=append(polynomial_chunks, functional_chunks), 
+                                          nMSE, 
+                                          folds))
+          },
+          {
+            stop('method not implemented')
+          }
+  )
+}
+
+forwardSubsetSelection = function(data, relationships, nMSE=1000, folds=5) {
+  bestSubsets = vector("list", 2)
+  names(bestSubsets) = c('model', 'MSE')
+  
+  interactions = list()
+  xlabels = colnames(data)
+  
+  best.formula <- paste(utils.Y_LABEL, " ~ ")
+  best.rsquared = 0
+  best.label = ""
+  inserted.labels = list()
+  inserted.interactions = list()
+  i = 0
+  while(!(is.empty(relationships) & is.empty(interactions) & is.empty(colnames))) {
+    i = i+1    
+    for(label in append(xlabels, relationships, interactions)) {
+      temp.formula <- paste(formula, label)
+      temp.model <- lm(formula, data=data, x=T, y=T)
+      temp.rsquared <- summary(temp.model)$r.squared
+      
+      if(temp.rsquared > best.rsquared) { 
+        best.rsquared <- temp.rsquared
+        best.model <- temp.model
+        best.label <- label
+      }
+    }
+      
+    
+    if(best.label %in% xlabels){
+      xlabels <- xlabels[xlabels!=best.label]
+      append(inserted.labels, best.label)
+      for(label in inserted.labels){
+        append(interactions, paste(label,"*",best.label))
+      }
+    } else if(best.label %in% interactions){
+      interactions <- interactions[interactions != best.label]
+      append(inserted.interactions, best.label)
+    }
+    bestSubsets$model[[i]] <- best.model
+    bestSubsets$MSE[[i]] <- mean_cvMSE(best.model, nMSE, folds)
+    formula <- temp.formula
+  }
+  
+  return(bestSubsets)
+}
+
+exhaustiveSubsetSelection <- function (data, relationships, nMSE, folds) {
+  
+}
+
+
+
 ds.prettyPlot = function (data, xlabel, ylabel, title) {
   data = if(is.list(data)) unlist(data)
   
