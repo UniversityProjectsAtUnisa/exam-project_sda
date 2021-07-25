@@ -13,6 +13,7 @@ library(ggcorrplot)
 library(zeallot)
 library(pheatmap)
 library(leaps)
+library(MuMIn)
 source('./utils.R')
 
 #==============================   CONFIG     ============================
@@ -30,8 +31,8 @@ ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
 
 #==================== REGRESSION WITHOUT INTERACTIONS ====================
 
-reg_base=lm.byIndices(ds, -1)
-inspectLm(reg_base, 5)
+baseModel=lm.byIndices(ds, -1)
+lm.inspect(baseModel, 5)
 
 
 #====================== INSPECT RELATIONSHIPS ============================
@@ -47,7 +48,7 @@ possibleDependencies = list('X_RestTimeFromLastMatch',
                             'I(X_MatchRelevance^2)')
 
 dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
-inspectLm(modelWithPossibleDependencies, 5)
+lm.inspect(modelWithPossibleDependencies, 5)
 
 
 
@@ -60,8 +61,8 @@ inspectLm(modelWithPossibleDependencies, 5)
 # The matrix will be store as an upper triangular matrix 
 # for computational efficiency
 
-base_rsquared = summary( lm.byIndices(ds, -1) )$r.squared
-interactionMatrix = inspectInteractionMatrix(ds, default=base_rsquared, showHeatmap = T)
+baseRSquared = summary( lm.byIndices(ds, -1) )$r.squared
+interactionMatrix = inspectInteractionMatrix(ds, default=baseRSquared, showHeatmap = T)
 
 
 
@@ -71,17 +72,17 @@ possibleDependencies = list('X_RestTimeFromLastMatch', 'X_AvgPlayerValue', 'I(X_
 
 possibleInteractions = list('X_Temperature*X_AvgPlayerValue')
 dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
-inspectLm(dependencyModelWithPossibleInteractions, 5)
+lm.inspect(dependencyModelWithPossibleInteractions, 5)
 
 
 possibleInteractions = list('X_AvgGoalConcededLastMatches*X_AvgPlayerValue')
 dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
-inspectLm(dependencyModelWithPossibleInteractions, 5)
+lm.inspect(dependencyModelWithPossibleInteractions, 5)
 
 
 possibleInteractions = list('X_AvgGoalConcededLastMatches*X_AvgPlayerValue', 'X_Temperature*X_AvgPlayerValue')
 dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
-inspectLm(dependencyModelWithPossibleInteractions, 5)
+lm.inspect(dependencyModelWithPossibleInteractions, 5)
 
 
 possibleInteractions = list(
@@ -90,166 +91,37 @@ possibleInteractions = list(
   'X_Temperature*X_AvgPlayerValue'
 )
 dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
-inspectLm(modelWithPossibleDependencies, 5)
+lm.inspect(modelWithPossibleDependencies, 5)
 
-#====================  BEST SUBSET INTERACTIONS   ==========================
 
-#add non linearities for best subset
+#====================  BEST SUBSET SELECTION WITH INTERACTIONS   ===============
+
+# add non linearities for best subset selection
 possibleInteractions = list(
   'X_Temperature*X_AvgPlayerValue',
   'X_AvgPlayerValue*X_SupportersImpact',
   'X_AvgGoalConcededLastMatches*X_AvgPlayerValue'
-)                       
-ds_nl = addNonLinearities(ds, 'X_Temperature*X_AvgPlayerValue',
-                          'X_AvgPlayerValue*X_SupportersImpact',
-                          'X_AvgGoalConcededLastMatches*X_AvgPlayerValue',
-                          'I(X_MatchRelevance^2)')    
+)    
 
+bestSubsets = bestSubsetSelection(ds, interactions=possibleInteractions, nMSE=2, folds=2, verbose=T)
+ds.prettyPlot(bestSubsets$MSE, xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
 
-leaps <- regsubsets(Y_MentalConcentration ~ .,
-                    data=ds_nl,
-                    nbest = 1, nvmax=length(ds_nl), intercept=TRUE, method="exhaustive")
-summary(leaps)
+bestSubset = bestSubsets$model[[which.min(bestSubsets$MSE)]]
+bestSubsetOSE = oneStandardErrorSubset(bestSubsets)
 
-X <- summary(leaps)$which
-xvars <- dimnames(X)[[2]][-1]
-responsevar <- Y_LABEL
-
-
-
-best_subsets <- vector("list", dim(X)[1])
-
-
-
-## loop through all rows / model specifications
-for (i in 1:dim(X)[1]) {
-  id <- X[i, ]
-  form <- reformulate(xvars[which(id[-1])], responsevar, id[1])
-  best_subsets[[i]] <- lm(form, data=ds_nl)
-}
-
-
-
-summary(best_subsets[[7]])
-best_MSEs = vector(length=PREDICTORS_NUMBER)
-temp_lm = 0
-for(i in 1:length(best_subsets)) {
-  print(i)
-  cnames = colnames(best_subsets[[i]]$model)
-  yname = cnames[1]
-  xnames = cnames[2:length(cnames)]
-  f = paste(xnames, collapse = ' + ')
-  f = paste(yname, "~", f)
-  temp_lm = lm(f, data=ds_nl, y=T, x=T)
-  print(f)
-  best_MSEs[i] = mean_cvMSE(temp_lm, 5)
-}
-
-
-
-plot(best_MSEs)
-
-# ========== best subset con interazioni =================
-
-myds_col_names = names(myds)[1:predictors]
-myds_interactions = data.frame(myds[,1:predictors])
-
-#imposto le interazioni con due vettori (interazione i_vector[k]*j_vector[k])
-i_vector = c('X_Temperature'   , 'X_SupportersImpact', 'X_AvgGoalConcededLastMatches', 'X_MatchRelevance')#,'X_OpposingSupportersImpact' )
-j_vector = c('X_AvgPlayerValue', 'X_AvgPlayerValue'  , 'X_AvgPlayerValue',             'X_MatchRelevance')#,'X_AvgPlayerValue')
-
-for(k in 1:length(i_vector) ){
-    i = which(names(myds)== i_vector[k]) 
-    j = which(names(myds)== j_vector[k]) 
-    myds_interactions = cbind(myds_interactions, myds[,i]*myds[,j])
-    if (myds_col_names[i]==myds_col_names[j]){
-      myds_col_names = c(myds_col_names, paste("I(",myds_col_names[i],"^2)"))
-    }else{
-    myds_col_names = c(myds_col_names, paste(myds_col_names[i],myds_col_names[j], sep = "*"))
-    }
-    
-}
-names(myds_interactions) = myds_col_names
-myds_interactions = cbind(myds_interactions, (myds[,Y_index])) 
-names(myds_interactions) = c(myds_col_names, names(myds)[Y_index])
-View(myds_interactions)
-
-#
-
-combination_number = (2^(length(myds_interactions)-1))-1
-subsets = matrix(list(), 1, combination_number)
-Y_index=length(myds_interactions)
-predictors=length(myds_interactions)-1
-for(comb in 1:combination_number){
-  f=paste(names(myds_interactions)[Y_index], "~")
-  for(k in 1:predictors){
-    if( bitwAnd( comb, 2^(k-1) ) > 0 ) {
-      f=paste(f, names(myds_interactions)[k], "+")
-    }
-  }
-  f = str_sub(f,1,nchar(f)-1) # Rimuovo l'ultimo +
-  #print(f)
-  subsets[1,comb]=list(lm(f, data=myds, y=TRUE, x=TRUE))
-}
-
-# Migliori subsets per numero di regressori
-best_subsets=vector(mode="list",length=predictors)
-
-for(elem in subsets[1,]) {
-  index = length(elem$coefficients)-1
-  rsquared = summary(elem)$r.squared
-  if(is.null(best_subsets[[index]])){
-    best_subsets[[index]] = elem
-  }
-  else if(rsquared > summary(best_subsets[[index]])$r.squared){ # R non esegue lo short circuit
-    best_subsets[[index]] = elem
-  }
-}
-
-
-
-best_MSEs = vector(length=predictors)
-temp_lm = 0
-# Sceglie il migliore tra tutti i modelli senza interazioni
-# (Cross-Validation)
-for(i in 1:length(best_subsets)) {
-  print(i)
-  cnames = colnames(best_subsets[[i]]$model)
-  yname = cnames[1]
-  xnames = colnames(summary(best_subsets[[i]])$cov.unscaled)[-1]
-  xnames = map(xnames, function(x){str_replace(x,":",'*')})
-  f = paste(xnames, collapse = ' + ')
-  f = paste(yname, "~", f)
-  temp_lm = lm(f, data=myds_interactions, y=T, x=T)
-  print(f)
-  best_MSEs[i] = mean_cvMSE(temp_lm, 5)
-}
-
-best_model = best_subsets[[which.min(best_MSEs)]]
-
-plot(best_MSEs) #il best model è proprio quello che avevo trovato prima con i 
-                #vari tentativi sulle interazioni
-mean_cvMSE(best_model, 10, 10)
-
+plot(bestSubsetOSE, 1)
 
 
 #===============  RIDGE E LASSO - ELASTIC NET   ===================
 
 ############# ADD NON LINEARITIES BEFORE SCALING ##################
 
-ds = addNonLinearities(ds, 'X_Temperature*X_AvgPlayerValue',
-                       'X_SupportersImpact*X_AvgGoalConcededLastMatches',
-                       'X_MatchRelevance*X_AvgPlayerValue',
-                       'X_AvgPlayerValue*X_MatchRelevance',
-                       'I(X_Temperature^2)',
-                       'I(X_SupportersImpact^3)',
-                       'I(X_AvgGoalConcededLastMatches^2)',
-                       'I(X_MatchRelevance^5)',
-                       'I(X_AvgPlayerValue^1)',
-                       'myfunc(X_AvgPlayerValue)',
-                       'myfunc(X_Temperature)'
-)
-scaled_ds = ds.scale(ds)
+bestInteractions = list(
+  'X_Temperature*X_AvgPlayerValue',
+  'X_AvgPlayerValue*X_SupportersImpact',
+  'X_AvgGoalConcededLastMatches*X_AvgPlayerValue'
+)    
+ds = ds.scale(addNonLinearities(ds, bestInteractions))
 
 
 lambda_grid = 10^seq(10, -3, length = 2000)

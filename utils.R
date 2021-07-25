@@ -64,7 +64,7 @@ ds.scale = function(ds) {
   return(cbind(ds[1], scale(ds[2:length(ds)])))
 }
 
-inspectLm = function(model, nMSE=1000) {
+lm.inspect = function(model, nMSE=1000, folds=5) {
   z <- list()
   
   print("================= SUMMARY =================")
@@ -72,7 +72,7 @@ inspectLm = function(model, nMSE=1000) {
   print(z$summary)
   
   print("==================  MSE  ==================")
-  z$MSE <- mean_cvMSE(model,nMSE)
+  z$MSE <- mean_cvMSE(model, nMSE, folds)
   print(z$MSE)
         
   plot(model, which=1)
@@ -155,10 +155,9 @@ addFunctions = function(data, chunks) {
   return(cbind(data, functional_matrix))
 }
 
-addNonLinearities = function(data, ...) {
+addNonLinearities = function(data, chunks) {
   polynomial_regex = POLYNOMIAL_REGEX
   functional_regex = FUNCTIONAL_REGEX
-  chunks = list(...)
   
   col_names = names(data)
   polynomial_chunks = str_match(chunks, polynomial_regex)[, 1]
@@ -213,3 +212,87 @@ inspectInteractionMatrix = function(data, default = 0, showHeatmap = F) {
 im.showHeatmap = function(interaction_matrix) {
   pheatmap(as.data.frame(interaction_matrix), display_numbers = T, color = colorRampPalette(c("navy", "white", "firebrick3"))(50))
 }
+
+
+bestSubsetSelection <- function(data, interactions, nMSE=1000, folds=5, verbose=F) {
+  # bestSubsetByNumberOfPredictors <- regsubsets(as.formula(paste(utils.Y_LABEL, ' ~ .')), 
+  #                                              data=data, nbest = 1, nvmax=length(dsNL), 
+  #                                              intercept=TRUE, method="exhaustive")
+  
+  data = ds
+  interactions = list('X_Temperature * X_Humidity','X_MatchRelevance * X_OpposingSupportersImpact', 'X_OpposingSupportersImpact * X_RestTimeFromLastMatch','X_RestTimeFromLastMatch * X_AvgPlayerValue','X_SupportersImpact * X_OpposingSupportersImpact','X_AvgPlayerValue * X_MatchRelevance')           
+  
+  formulaChunks = paste(append(interactions, names(data)[-1]), collapse = " + ")
+  oneSidedFormula = paste('~ ', formulaChunks)
+  oneSidedFormula
+  mylm = lm(formula = as.formula(paste(utils.Y_LABEL, oneSidedFormula)), data=data, x=T, y=T)
+  options(na.action = "na.fail")
+  res = dredge(global.model=mylm, subset=as.formula(oneSidedFormula))
+  
+  bestSubsetByNumberOfPredictors <- regsubsets(x         = as.formula(paste(utils.Y_LABEL, ' ~ ', formulaChunks)), 
+                                               data      = data, 
+                                               nbest     = 1, 
+                                               nvmax     = length(data), 
+                                               intercept = TRUE, 
+                                               method    = "exhaustive")
+  
+  # Matrix of boolean that shows for the each row which predictors 
+  # provide the best combination
+  predictorsTable <- summary(bestSubsetByNumberOfPredictors)$which
+  xLabels <- colnames(predictorsTable)[-1]
+  yLabel <- utils.Y_LABEL
+  
+  predictorsNumber = dim(predictorsTable)[1]
+  bestSubsets <- vector("list", 2)
+  names(bestSubsets) = c('model', 'MSE')
+  
+  for (i in 1:predictorsNumber) {
+    ithRow <- predictorsTable[i, ]
+    formula <- reformulate(xLabels[which(ithRow[-1])], yLabel, intercept=ithRow[1])
+    if(verbose) print(formula)
+    model = lm(formula, data=data, x=T, y=T)
+    summary(model)
+    bestSubsets$model[[i]] = model
+    bestSubsets$MSE[[i]]   = mean_cvMSE(model, nMSE, folds)
+  }
+  return(bestSubsets)
+} 
+
+ds.prettyPlot = function (data, xlabel, ylabel, title) {
+  data = if(is.list(data)) unlist(data)
+  
+  maxMSE = getSubsetsMaxMSE(data)
+  ggplotDF =  cbind(c(1:length(data)),
+                    data.frame(data), 
+                    rep(maxMSE, length(data)) )
+  names(ggplotDF) = c("x", "y", 'z')
+  
+  ggplot(ggplotDF, aes(x, y)) + 
+    geom_line(color="#33658a") + 
+    geom_point(shape=21, color="#86bbd8", fill="#86bbd8", size=6) + 
+    ggtitle(title) +
+    xlab(xlabel) +
+    ylab(ylabel) + 
+    geom_line(aes(x, z), color="red")
+}
+
+oneStandardErrorSubset = function(bestSubsets) {
+  MSEs = if(is.list(bestSubsets$MSE)) unlist(bestSubsets$MSE) else bestSubsets$MSEF
+  maxMSE = getSubsetsMaxMSE
+  
+  for(i in 1:length(MSEs)){
+    if (MSEs[i] <= maxMSE){
+      print(MSEs[i])
+      return (bestSubsets$model[[i]])
+    }
+  }
+}
+
+getSubsetsMaxMSE = function(data) {
+  min(data) + sqrt(var(data))
+}
+
+
+
+
+
