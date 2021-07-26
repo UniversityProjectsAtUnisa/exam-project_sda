@@ -348,42 +348,51 @@ forwardSubsetSelection = function(data, relationships, nMSE=1000, folds=5, nvmax
   return(bestSubsets)
 }
 
-exhaustiveSubsetSelection <- function (data, relationships, nMSE, folds) {
+exhaustiveSubsetSelection <- function (data, relationships, nMSE=1000, folds=5, verbose=F) {
+  interaction_regex = INTERACTION_REGEX
   bestSubsets = vector("list", 2)
   names(bestSubsets) = c('model', 'MSE')
+  xlabels = c(names(data)[-1], relationships)
   
-  ds_headers = c(names(data), relationships)
+  bestSubsets$model = vector(mode = "list", length = length(xlabels))
+  bestSubsets$MSE = vector(mode = "list", length = length(xlabels))
   
-  combination_number = (2^utils.PREDICTORS_NUMBER)-1
   
-  for(comb in 1:combination_number){
-    f=paste(names(myds)[Y_index], "~")
-    for(k in 1:predictors){
+  combination_number = (2^length(xlabels)) - 1
+  
+for(comb in 1:combination_number){
+    f = paste(utils.Y_LABEL, " ~ ")
+    for(k in 1:(length(xlabels))){
       if( bitwAnd( comb, 2^(k-1) ) > 0 ) {
-        #PRIMA DI METTERE L'INTERAZIONE
-        #SE È UN'INTERAZIONE CONTROLLO SE CI SONO GIÀ GLI ALTRI DUE NELLA FORMULA
-        #A PATTO CHE LE INTERAZIONI SIANO GLI ULTIMI
-        if ('*' %in% ds_headers[k]){
-          #interazione trovata
-          pieces = str_match(unlist(str_split(f, pattern='\\s+')),INTERACTION_REGEX)
-          pieces = na.omit(pieces)[,-1]
-          for (i in 1:(dim(pieces)[1])){ #for each match
-            firstTerm  = pieces[i,1]
-            secondTerm = pieces[i,2]
-          }
-        }
-        
-        INTERACTION_REGEX
-        
-        
-        f=paste(f, ds_headers[k], "+")
+        f=paste(f, xlabels[k], "+")
       }
     }
     f = str_sub(f,1,nchar(f)-1) # Rimuovo l'ultimo +
-    subsets[1,comb]=list(lm(f, data=myds, y=TRUE, x=TRUE))
+    
+    
+    
+    temp.model          = lm(f, data=data, y=TRUE, x=TRUE)
+    predictorsInFormula = length(names(temp.model$coefficients)) - 1
+    temp.rsquared = summary(temp.model)$r.squared
+    if(is.null(bestSubsets$model[[predictorsInFormula]])) {
+      bestSubsets$model[[predictorsInFormula]] = temp.model
+    } else {
+      best.rsquared = summary(bestSubsets$model[[predictorsInFormula]])$r.squared
+      if(temp.rsquared > best.rsquared) {
+        bestSubsets$model[[predictorsInFormula]] = temp.model
+      }
+    }
   }
   
-  lm.byIndices(data, indices, addIntercept=T)
+  for(i in 1:length(bestSubsets$model)) {
+    if(verbose) {
+      print(i)
+    }
+    bestSubsets$MSE[[i]] <- mean_cvMSE(bestSubsets$model[[i]], nMSE, folds)
+  }
+  
+  return(bestSubsets)
+
 }
 
 
@@ -408,7 +417,7 @@ ds.prettyPlot = function (data, xlabel, ylabel, title) {
 
 oneStandardErrorSubset = function(bestSubsets) {
   MSEs = if(is.list(bestSubsets$MSE)) unlist(bestSubsets$MSE) else bestSubsets$MSEF
-  maxMSE = getSubsetsMaxMSE
+  maxMSE = getSubsetsMaxMSE(MSEs)
   
   for(i in 1:length(MSEs)){
     if (MSEs[i] <= maxMSE){
@@ -423,6 +432,123 @@ getSubsetsMaxMSE = function(data) {
 }
 
 
+lm.shrinkage <- function (ds_scaled, lambda_grid, nMSE = 1000, folds = 5, showPlot = F) {
+  y = as.matrix(ds_scaled[,1])
+  x = as.matrix(ds_scaled[,2:(length(ds_scaled))])
+  
+  z = vector(mode="list", length=2)
+  names(z) = c("lasso", "ridge")
+  z$ridge = vector(mode="list", length=2)
+  names(z$ridge) = c("model", "cvm")
+  z$ridge$cvm = 0
+  z$lasso = vector(mode="list", length=2)
+  names(z$lasso) = c("model", "cvm")
+  z$lasso$cvm = 0
+  
+  for (i in 1:nMSE) {
+    ridge = cv.glmnet(x, y, alpha = 0, lambda = lambda_grid, nfolds = folds, trace.it = 0)
+    lasso = cv.glmnet(x, y, alpha = 1, lambda = lambda_grid, nfolds = folds, trace.it = 0)
+    z$ridge$cvm = z$ridge$cvm + ridge$cvm
+    z$lasso$cvm = z$lasso$cvm + lasso$cvm
+  }
+  
+  
+  best_index_ridge = which.min(z$ridge$cvm)
+  z$ridge$model = cv.glmnet(x, y, alpha=1, lambda = c( lambda_grid[best_index_ridge], lambda_grid[1]), trace.it = 0, nfolds = folds)
+  
+  best_index_lasso = which.min(z$lasso$cvm)
+  z$lasso$model = cv.glmnet(x, y, alpha=1, lambda = c( lambda_grid[best_index_lasso], lambda_grid[1]), trace.it = 0, nfolds = folds)
+  
+  z$ridge$cvm = z$ridge$cvm/nMSE
+  z$lasso$cvm = z$lasso$cvm/nMSE
+  
+  if(showPlot) {
+    lm.plotRidgeVsLasso(lambda_grid, z$ridge$cvm, z$lasso$cvm)
+  }
+  
+  return(z)
+}
+
+lm.elasticNet <- function(ds_scaled, alpha_grid, lambda_grid, nMSE, folds, best_mse = NULL, showPlot = F, verbose = F) {
+  y = as.matrix(ds_scaled[,1])
+  x = as.matrix(ds_scaled[,2:(length(ds_scaled))])
+  
+  MSEs = vector(mode='numeric', length(alpha_grid))
+  lambdas = vector(mode='numeric', length(alpha_grid))
+  foldids = sample(rep(seq(folds), length = nrow(x)))
+  
+  i = 0
+  for(alpha in alpha_grid){
+    i = i + 1
+    cvm = 0
+    for(j in 1:nMSE) {
+      model = cv.glmnet(x, y, alpha=alpha, lambda=lambda_grid, folds=folds)
+      cvm = cvm + model$cvm
+    }
+    MSEs[i] = min(cvm)/nMSE
+    if(verbose) print(i)
+  }
+  
+  if(showPlot) {
+    lm.plotElasticNet(alpha_grid, MSEs, best_mse)
+  }
+  
+  return(MSEs)
+}
 
 
+lm.plotRidgeVsLasso <- function(lambda_grid, lassoCvm, ridgeCvm) {
+  colors = list()
+  colors$lasso = 'darkblue'
+  colors$ridge = 'red'
+  
+  maxMSE = getSubsetsMaxMSE(lassoCvm)
+  ggplotDF =  cbind(lambda_grid,
+                    data.frame(lassoCvm), 
+                    data.frame(ridgeCvm))
+  names(ggplotDF) = c("x", "y", 'z')
+  
+  gg_plot <- ggplot(ggplotDF) + 
+    geom_line(aes(x, y, colour="Lasso"), size=1) + 
+    geom_line(aes(x, z, colour="Ridge"), size=1) + 
+    labs(x = 'Lambda',
+         y = 'cross validation MSE') +
+    scale_color_manual(name = "Legend", values = c("Lasso" = colors$lasso, "Ridge" = colors$ridge)) +
+    ggtitle("Ridge vs Lasso") +
+    scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x))
+  
+  print(gg_plot)
+}
+
+
+lm.plotElasticNet <- function(alpha_grid, MSEs, best_mse = NULL) {
+  colors = list()
+  colors$MSE = 'darkblue'
+  colors$best_mse = 'red'
+  
+  ggplotDF =  cbind(alpha_grid, data.frame(MSEs))
+  names(ggplotDF) = c("x", "y")
+  
+  if(!is.null(best_mse)) {
+    ggplotDF =  cbind(ggplotDF, data.frame(rep(best_mse, length(MSEs))))
+    names(ggplotDF) = c(names(ggplotDF)[1:2], 'z')
+  } 
+  
+  gg_plot <- ggplot(ggplotDF) + 
+    geom_line(aes(x, y, colour="Elastic net MSE"), size=1) + 
+    labs(x = 'Alpha', y = 'MSE')
+  
+  if(!is.null(best_mse)) {
+    gg_plot <- gg_plot + 
+      geom_line(aes(x, z, colour="best MSE"), size=1) + 
+      scale_color_manual(name = "Legend", values = c("Elastic net MSE" = colors$MSE, "best MSE" = colors$best_mse)) +
+      ggtitle("Elastic net MSE vs best MSE yet")
+  } else {
+    gg_plot <- gg_plot + 
+      scale_color_manual(name = "Legend", values = c("Elastic net MSE" = colors$MSE)) +
+      ggtitle("Elastic net MSE")
+  }
+  
+  print(gg_plot)
+}
 

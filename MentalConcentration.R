@@ -14,6 +14,7 @@ library(zeallot)
 library(pheatmap)
 library(leaps)
 library(MuMIn)
+library(scales)
 source('./utils.R')
 
 #==============================   CONFIG     ============================
@@ -97,7 +98,7 @@ lm.inspect(modelWithPossibleDependencies, 5)
 #====================  BEST SUBSET SELECTION WITH INTERACTIONS   ===============
 
 # add non linearities for best subset selection
-possibleInteractions = list(
+possibleRelationships = list(
   'X_Temperature*X_AvgPlayerValue',
   'X_AvgPlayerValue*X_SupportersImpact',
   'X_AvgGoalConcededLastMatches*X_AvgPlayerValue'
@@ -116,20 +117,12 @@ plot(bestSubsetOSE, 1)
 #============  BEST SUBSET SELECTION WITH INTERACTIONS FORWARD   ===============
 
 
-source('./utils.R')
-ABS_PATH = 'C:/Users/marco/Documents/UNISA/SDA/progetto/SDAgruppo2'
-DATASET_FILENAME = 'RegressionData_SDA_AH_group2.csv'
-Y_LABEL = 'Y_MentalConcentration'
-PREDICTORS_NUMBER = 10
-setwd(ABS_PATH)
-ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
-
 possibleRelationships = list(
-  'I(X_AvgPlayerValue^2)'
+  'I(X_MatchRelevance^2)'
 )
-bestSubsets = bestSubsetSelection(ds, relationships=NULL, nMSE=2, folds=2, method="forward", nvmax=15, verbose=T)
+bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=2, folds=2, method="forward", nvmax=15, verbose=T)
 
-ds.prettyPlot(bestSubsets$MSE[1:15], xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
+ds.prettyPlot(bestSubsets$MSE, xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
 
 
 #===============  RIDGE E LASSO - ELASTIC NET   ===================
@@ -141,80 +134,29 @@ bestInteractions = list(
   'X_AvgPlayerValue*X_SupportersImpact',
   'X_AvgGoalConcededLastMatches*X_AvgPlayerValue'
 )    
-ds = ds.scale(addNonLinearities(ds, bestInteractions))
+ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
+lambda_grid = 10^seq(4, -6, length = 2000)
 
-
-lambda_grid = 10^seq(10, -3, length = 2000)
-#set.seed(1)
-
-x = as.matrix(myds_scaled[,1:(length(myds_scaled)-1)])
-
-shrinkage_MSEs = matrix(0,2,length(lambda_grid))
-n_iterations=10
-Y_index=15
-for (i in 1:n_iterations){
-  
-  ridge = cv.glmnet(x, as.matrix(myds[,Y_index]),
-                    alpha=0, lambda = lambda_grid, nfolds=5, trace.it = 0)
-  lasso = cv.glmnet(x, as.matrix(myds[,Y_index]),
-                    alpha=1, lambda = lambda_grid, nfolds=5, trace.it = 0)
-  
-  shrinkage_MSEs[1,] =shrinkage_MSEs[1,]+ ridge$cvm
-  shrinkage_MSEs[2,] =shrinkage_MSEs[2,]+ lasso$cvm
-}
-coef(ridge, s = ridge$lambda.min)
-coef(lasso, s = lasso$lambda.min)
-
-print('migliori lambda ridge')
-print(lambda_grid[which.min(shrinkage_MSEs[1,])])
-print('migliori lambda lasso')
-print(lambda_grid[which.min(shrinkage_MSEs[2,])])
-
-
-bestmse = mean_cvMSE(best_model,5)# cv.lm(best_model,k=5)$MSE$mean
-
-plot(lambda_grid,shrinkage_MSEs[2,]/n_iterations,col = 'orange',log='x',type='l')
-lines(lambda_grid,shrinkage_MSEs[1,]/n_iterations,xlab=expression(lambda),ylab = 'cvMSE',pch = 21,type='l',col = 'blue')
-
-
-legend('bottomright', legend=c('Ridge', 'Lasso'), col=c('blue','orange'), pch=20)
-
-
-best_index_lasso = which.min(shrinkage_MSEs[2,])
-
-lasso = cv.glmnet(x, as.matrix(myds[,Y_index]),
-                  alpha=1, lambda = c( lambda_grid[best_index_lasso],10000000), trace.it = 0, nfolds = 5)
+models = lm.shrinkage(ds_scaled, lambda_grid, nMSE=2, folds=4, showPlot=T)
 
 coef(lasso, s = lasso$lambda.min)
 
 
+#============================= ELASTIC NET  ===============================
 
-min(shrinkage_MSEs[1,]/n_iterations)
-min(shrinkage_MSEs[2,]/n_iterations)
+bestInteractions = list(
+  'X_Temperature*X_AvgPlayerValue',
+  'X_AvgPlayerValue*X_SupportersImpact',
+  'X_AvgGoalConcededLastMatches*X_AvgPlayerValue'
+)    
+ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
 
+lambda_grid = 10^seq(4, -6, length = 2000)
+alpha_grid = seq(0,1,length = 100)
 
-#elastic net
+MSEs = lm.elasticNet(ds_scaled, alpha_grid, lambda_grid, nMSE=300, folds=10, best_mse = 2, showPlot = T, verbose = T)
 
-alpha_grid = seq(0,1,length = 1000)
-MSEs = vector(mode='numeric', 1000)
-lambdas = vector(mode='numeric', 1000)
-
-
-i = 1
-foldids = sample(rep(seq(5), length = 40))
-for(alpha in alpha_grid){
-  model = cv.glmnet(x, as.matrix(myds_scaled[,Y_index]), alpha=alpha, lambda=lambda_grid, foldid=foldids)
-  MSEs[i] = min(model$cvm)
-  i = i + 1
-  print(i)
-}
-
-
-plot(alpha_grid,MSEs,type='l')
-lines(c(min(lambda_grid), max(lambda_grid)), c(bestmse,bestmse))
-
-which.min(mses)
-alpha_grid[which.min(mses)]
+# lm.plotElasticNet(alpha_grid, MSEs, 2)
 
 ############## PROBLEMI DELLA REG LINEARE ############
 # 1) NON LINEARITÀ
@@ -224,8 +166,8 @@ plot(best_model)
 # La linea rossa non è dritta quindi c'è della non linearità che non è stata spiegata
 
 # 2) Outliers
-stud_res=studres(best_model)
-plot(best_model$fitted.values, stud_res)
+stud_res=studres(bestSubset)
+plot(bestSubset$fitted.values, stud_res)
 
 # ci sono outlier : osservazione n° 35
 myds = myds[-35,]
