@@ -1,7 +1,8 @@
 #================ Config constants =====================
 
-POLYNOMIAL_REGEX = '.*I\\((.*)\\^(\\d+)\\)'
-FUNCTIONAL_REGEX = '(\\w*)\\((\\w*)\\)'
+POLYNOMIAL_REGEX  = '.*I\\((.*)\\^(\\d+)\\)'
+FUNCTIONAL_REGEX  = '(\\w*)\\((\\w*)\\)'
+INTERACTION_REGEX = '(\\w+)\\*(\\w+)'
 
 #================ Config variables =====================
 
@@ -351,6 +352,7 @@ exhaustiveSubsetSelection <- function (data, relationships, nMSE, folds) {
   bestSubsets = vector("list", 2)
   names(bestSubsets) = c('model', 'MSE')
   
+  ds_headers = c(names(data), relationships)
   
   combination_number = (2^utils.PREDICTORS_NUMBER)-1
   
@@ -358,10 +360,23 @@ exhaustiveSubsetSelection <- function (data, relationships, nMSE, folds) {
     f=paste(names(myds)[Y_index], "~")
     for(k in 1:predictors){
       if( bitwAnd( comb, 2^(k-1) ) > 0 ) {
-        PRIMA DI METTERE L'INTERAZIONE
-        SE È UN'INTERAZIONE CONTROLLO SE CI SONO GIÀ GLI ALTRI DUE NELLA FORMULA
-        A PATTO CHE LE INTERAZIONI SIANO GLI ULTIMI
-        f=paste(f, names(myds)[k], "+")
+        #PRIMA DI METTERE L'INTERAZIONE
+        #SE È UN'INTERAZIONE CONTROLLO SE CI SONO GIÀ GLI ALTRI DUE NELLA FORMULA
+        #A PATTO CHE LE INTERAZIONI SIANO GLI ULTIMI
+        if ('*' %in% ds_headers[k]){
+          #interazione trovata
+          pieces = str_match(unlist(str_split(f, pattern='\\s+')),INTERACTION_REGEX)
+          pieces = na.omit(pieces)[,-1]
+          for (i in 1:(dim(pieces)[1])){ #for each match
+            firstTerm  = pieces[i,1]
+            secondTerm = pieces[i,2]
+          }
+        }
+        
+        INTERACTION_REGEX
+        
+        
+        f=paste(f, ds_headers[k], "+")
       }
     }
     f = str_sub(f,1,nchar(f)-1) # Rimuovo l'ultimo +
