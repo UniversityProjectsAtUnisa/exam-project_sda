@@ -112,6 +112,26 @@ bestSubsetOSE = oneStandardErrorSubset(bestSubsets)
 plot(bestSubsetOSE, 1)
 
 
+
+#============  BEST SUBSET SELECTION WITH INTERACTIONS FORWARD   ===============
+
+
+source('./utils.R')
+ABS_PATH = 'C:/Users/marco/Documents/UNISA/SDA/progetto/SDAgruppo2'
+DATASET_FILENAME = 'RegressionData_SDA_AH_group2.csv'
+Y_LABEL = 'Y_MentalConcentration'
+PREDICTORS_NUMBER = 10
+setwd(ABS_PATH)
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+
+possibleRelationships = list(
+  'I(X_AvgPlayerValue^2)'
+)
+bestSubsets = bestSubsetSelection(ds, relationships=NULL, nMSE=2, folds=2, method="forward", nvmax=15, verbose=T)
+
+ds.prettyPlot(bestSubsets$MSE[1:15], xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
+
+
 #===============  RIDGE E LASSO - ELASTIC NET   ===================
 
 ############# ADD NON LINEARITIES BEFORE SCALING ##################

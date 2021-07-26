@@ -214,56 +214,64 @@ im.showHeatmap = function(interaction_matrix) {
 }
 
 
-bestSubsetSelection <- function(data, interactions, nMSE=1000, folds=5, verbose=F) {
-  # bestSubsetByNumberOfPredictors <- regsubsets(as.formula(paste(utils.Y_LABEL, ' ~ .')), 
-  #                                              data=data, nbest = 1, nvmax=length(dsNL), 
-  #                                              intercept=TRUE, method="exhaustive")
-  
-  data = ds
-  interactions = list('X_Temperature * X_Humidity','X_MatchRelevance * X_OpposingSupportersImpact', 'X_OpposingSupportersImpact * X_RestTimeFromLastMatch','X_RestTimeFromLastMatch * X_AvgPlayerValue','X_SupportersImpact * X_OpposingSupportersImpact','X_AvgPlayerValue * X_MatchRelevance')           
-  
-  formulaChunks = paste(append(interactions, names(data)[-1]), collapse = " + ")
-  oneSidedFormula = paste('~ ', formulaChunks)
-  oneSidedFormula
-  mylm = lm(formula = as.formula(paste(utils.Y_LABEL, oneSidedFormula)), data=data, x=T, y=T)
-  options(na.action = "na.fail")
-  res = dredge(global.model=mylm, subset=as.formula(oneSidedFormula))
-  
-  bestSubsetByNumberOfPredictors <- regsubsets(x         = as.formula(paste(utils.Y_LABEL, ' ~ ', formulaChunks)), 
-                                               data      = data, 
-                                               nbest     = 1, 
-                                               nvmax     = length(data), 
-                                               intercept = TRUE, 
-                                               method    = "exhaustive")
-  
-  # Matrix of boolean that shows for the each row which predictors 
-  # provide the best combination
-  predictorsTable <- summary(bestSubsetByNumberOfPredictors)$which
-  xLabels <- colnames(predictorsTable)[-1]
-  yLabel <- utils.Y_LABEL
-  
-  predictorsNumber = dim(predictorsTable)[1]
-  bestSubsets <- vector("list", 2)
-  names(bestSubsets) = c('model', 'MSE')
-  
-  for (i in 1:predictorsNumber) {
-    ithRow <- predictorsTable[i, ]
-    formula <- reformulate(xLabels[which(ithRow[-1])], yLabel, intercept=ithRow[1])
-    if(verbose) print(formula)
-    model = lm(formula, data=data, x=T, y=T)
-    summary(model)
-    bestSubsets$model[[i]] = model
-    bestSubsets$MSE[[i]]   = mean_cvMSE(model, nMSE, folds)
-  }
-  return(bestSubsets)
-} 
+# bestSubsetSelection <- function(data, interactions, nMSE=1000, folds=5, verbose=F) {
+#   # bestSubsetByNumberOfPredictors <- regsubsets(as.formula(paste(utils.Y_LABEL, ' ~ .')), 
+#   #                                              data=data, nbest = 1, nvmax=length(dsNL), 
+#   #                                              intercept=TRUE, method="exhaustive")
+#   
+#   data = ds
+#   interactions = list('X_Temperature * X_Humidity','X_MatchRelevance * X_OpposingSupportersImpact', 'X_OpposingSupportersImpact * X_RestTimeFromLastMatch','X_RestTimeFromLastMatch * X_AvgPlayerValue','X_SupportersImpact * X_OpposingSupportersImpact','X_AvgPlayerValue * X_MatchRelevance')           
+#   
+#   formulaChunks = paste(append(interactions, names(data)[-1]), collapse = " + ")
+#   oneSidedFormula = paste('~ ', formulaChunks)
+#   oneSidedFormula
+#   mylm = lm(formula = as.formula(paste(utils.Y_LABEL, oneSidedFormula)), data=data, x=T, y=T)
+#   options(na.action = "na.fail")
+#   res = dredge(global.model=mylm, subset=as.formula(oneSidedFormula))
+#   
+#   bestSubsetByNumberOfPredictors <- regsubsets(x         = as.formula(paste(utils.Y_LABEL, ' ~ ', formulaChunks)), 
+#                                                data      = data, 
+#                                                nbest     = 1, 
+#                                                nvmax     = length(data), 
+#                                                intercept = TRUE, 
+#                                                method    = "exhaustive")
+#   
+#   # Matrix of boolean that shows for the each row which predictors 
+#   # provide the best combination
+#   predictorsTable <- summary(bestSubsetByNumberOfPredictors)$which
+#   xLabels <- colnames(predictorsTable)[-1]
+#   yLabel <- utils.Y_LABEL
+#   
+#   predictorsNumber = dim(predictorsTable)[1]
+#   bestSubsets <- vector("list", 2)
+#   names(bestSubsets) = c('model', 'MSE')
+#   
+#   for (i in 1:predictorsNumber) {
+#     ithRow <- predictorsTable[i, ]
+#     formula <- reformulate(xLabels[which(ithRow[-1])], yLabel, intercept=ithRow[1])
+#     if(verbose) print(formula)
+#     model = lm(formula, data=data, x=T, y=T)
+#     summary(model)
+#     bestSubsets$model[[i]] = model
+#     bestSubsets$MSE[[i]]   = mean_cvMSE(model, nMSE, folds)
+#   }
+#   return(bestSubsets)
+# } 
 
-bestSubsetSelection <- function (data, relationships, nMSE=1000, folds=5, method) {
+bestSubsetSelection <- function (data, relationships=NULL, nMSE=1000, folds=5, method, nvmax=NULL, verbose=F) {
   switch (method,
           exhaustive={
-            return(exhaustiveSubsetSelection(data, relationships, nMSE, folds))
+            return(exhaustiveSubsetSelection(data, relationships, nMSE, folds, verbose))
           },
           forward={
+            if(is.null(relationships)) {
+              return(forwardSubsetSelection(data, 
+                                            relationships=NULL, 
+                                            nMSE, 
+                                            folds,
+                                            nvmax,
+                                            verbose))
+            }
             polynomial_regex = POLYNOMIAL_REGEX
             polynomial_chunks = str_match(relationships, polynomial_regex)[, 1]
             polynomial_chunks = polynomial_chunks[!is.na(polynomial_chunks)]
@@ -275,7 +283,9 @@ bestSubsetSelection <- function (data, relationships, nMSE=1000, folds=5, method
             return(forwardSubsetSelection(data, 
                                           relationships=append(polynomial_chunks, functional_chunks), 
                                           nMSE, 
-                                          folds))
+                                          folds,
+                                          nvmax,
+                                          verbose))
           },
           {
             stop('method not implemented')
@@ -283,12 +293,13 @@ bestSubsetSelection <- function (data, relationships, nMSE=1000, folds=5, method
   )
 }
 
-forwardSubsetSelection = function(data, relationships, nMSE=1000, folds=5) {
+forwardSubsetSelection = function(data, relationships, nMSE=1000, folds=5, nvmax=NULL, verbose = F) {
+  
   bestSubsets = vector("list", 2)
   names(bestSubsets) = c('model', 'MSE')
   
   interactions = list()
-  xlabels = colnames(data)
+  xlabels = colnames(data)[-1]
   
   best.formula <- paste(utils.Y_LABEL, " ~ ")
   best.rsquared = 0
@@ -296,11 +307,11 @@ forwardSubsetSelection = function(data, relationships, nMSE=1000, folds=5) {
   inserted.labels = list()
   inserted.interactions = list()
   i = 0
-  while(!(is.empty(relationships) & is.empty(interactions) & is.empty(colnames))) {
+  while(!(is_empty(relationships) & is_empty(interactions) & is_empty(xlabels))) {
     i = i+1    
-    for(label in append(xlabels, relationships, interactions)) {
-      temp.formula <- paste(formula, label)
-      temp.model <- lm(formula, data=data, x=T, y=T)
+    for(label in append(xlabels, append(relationships, interactions))) {
+      temp.formula <- paste(best.formula, label)
+      temp.model <- lm(temp.formula, data=data, x=T, y=T)
       temp.rsquared <- summary(temp.model)$r.squared
       
       if(temp.rsquared > best.rsquared) { 
@@ -310,27 +321,54 @@ forwardSubsetSelection = function(data, relationships, nMSE=1000, folds=5) {
       }
     }
       
-    
     if(best.label %in% xlabels){
       xlabels <- xlabels[xlabels!=best.label]
-      append(inserted.labels, best.label)
-      for(label in inserted.labels){
-        append(interactions, paste(label,"*",best.label))
+      inserted.labels = append(inserted.labels, best.label)
+      for(label in inserted.labels[inserted.labels!=best.label]){
+        interactions = append(interactions, paste(label,"*",best.label, sep=""))
       }
     } else if(best.label %in% interactions){
       interactions <- interactions[interactions != best.label]
-      append(inserted.interactions, best.label)
     }
     bestSubsets$model[[i]] <- best.model
     bestSubsets$MSE[[i]] <- mean_cvMSE(best.model, nMSE, folds)
-    formula <- temp.formula
+    best.formula <- paste(best.formula, best.label, " + ")
+    if(verbose) {
+      cat(i)
+      cat(" ")
+      print(best.formula)
+    }
+    if(!is.null(nvmax) && i >= nvmax) {
+      return(bestSubsets)
+    }
+    best.rsquared=0
   }
   
   return(bestSubsets)
 }
 
 exhaustiveSubsetSelection <- function (data, relationships, nMSE, folds) {
+  bestSubsets = vector("list", 2)
+  names(bestSubsets) = c('model', 'MSE')
   
+  
+  combination_number = (2^utils.PREDICTORS_NUMBER)-1
+  
+  for(comb in 1:combination_number){
+    f=paste(names(myds)[Y_index], "~")
+    for(k in 1:predictors){
+      if( bitwAnd( comb, 2^(k-1) ) > 0 ) {
+        PRIMA DI METTERE L'INTERAZIONE
+        SE È UN'INTERAZIONE CONTROLLO SE CI SONO GIÀ GLI ALTRI DUE NELLA FORMULA
+        A PATTO CHE LE INTERAZIONI SIANO GLI ULTIMI
+        f=paste(f, names(myds)[k], "+")
+      }
+    }
+    f = str_sub(f,1,nchar(f)-1) # Rimuovo l'ultimo +
+    subsets[1,comb]=list(lm(f, data=myds, y=TRUE, x=TRUE))
+  }
+  
+  lm.byIndices(data, indices, addIntercept=T)
 }
 
 
