@@ -15,6 +15,9 @@ library(pheatmap)
 library(leaps)
 library(MuMIn)
 library(scales)
+library(VGAM)
+library(matlib)
+library(ggfortify)
 source('./utils.R')
 
 #==============================   CONFIG     ============================
@@ -23,6 +26,8 @@ ABS_PATH = 'C:/Users/marco/Documents/UNISA/SDA/progetto/SDAgruppo2'
 DATASET_FILENAME = 'RegressionData_SDA_AH_group2.csv'
 Y_LABEL = 'Y_MentalConcentration'
 PREDICTORS_NUMBER = 10
+
+OUTLIER_STUDENTIZED_RES_THRESHOLD = 3
 
 #================================ START =================================
 
@@ -104,7 +109,7 @@ possibleRelationships = list(
   'X_AvgGoalConcededLastMatches*X_AvgPlayerValue'
 )    
 
-bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=2, folds=2, verbose=T, method="exhaustive")
+bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=10, folds=10, verbose=T, method="exhaustive")
 ds.prettyPlot(bestSubsets$MSE, xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
 
 bestSubset = bestSubsets$model[[which.min(bestSubsets$MSE)]]
@@ -158,16 +163,115 @@ MSEs = lm.elasticNet(ds_scaled, alpha_grid, lambda_grid, nMSE=300, folds=10, bes
 
 # lm.plotElasticNet(alpha_grid, MSEs, 2)
 
-############## PROBLEMI DELLA REG LINEARE ############
-# 1) NON LINEARITÀ
-# vediamo i residui
+#======================= LINEAR REGRESSION - ISSUES =======================
+# the best model to analyze
+best_model = bestSubset # or any other
+
+# 1) non-linearities & homoschedasticity ----------------------------------
+# analyze residuals
 plot(best_model, which=1)
-plot(best_model)
 # La linea rossa non è dritta quindi c'è della non linearità che non è stata spiegata
 
-# 2) Outliers
-stud_res=studres(bestSubset)
-plot(bestSubset$fitted.values, stud_res)
+# 2) high leverage points -------------------------------------------------
+# # compute hat values
+# hats <- as.data.frame(hatvalues(best_model))
+# #check wether any of them is much greater than the mean (p+1)/n
+# num_points = dim(ds)[1]
+# ds.prettyPlot(hats/(NUM+1)*num_points, xlabel, ylabel, title)
+# # non c'è nessun valore >>(p+1)/n
+
+hat.plot <- function(fit, interactive=T) {
+  p <- length(coefficients(fit))
+  n <- length(fitted(fit))
+  hats=hatvalues(fit)
+  boundaries = c(2,3)*p/n
+  ggplotDF =  cbind(c(1:length(hats)),
+                    data.frame(hats), 
+                    rep(boundaries[1], length(hats)),
+                    rep(boundaries[2], length(hats)))
+  names(ggplotDF) = c("point", "Hat",'LowerBound', 'UpperBound')
+  ggplot(ggplotDF,aes(point, Hat))+
+    geom_point(shape=21, color="#86bbd8", fill="#86bbd8", size=2.5)+
+    geom_line(aes(point, LowerBound), color="red")+
+    geom_line(aes(point, UpperBound), color="red")+
+    labs(x = 'Points',
+         y = 'Hat values')
+  
+  if (interactive) ggplotly()
+}
+hat.plot(best_model)
+
+# 4) collinearity ---------------------------------------------------------
+vifs.plot <- function(ds, predictors_indices){
+  #da modificare e tenere in considerazione anche le intearzioni. ci devo pensare
+  
+  ggplotDF = (data.frame(Predictor=integer(), VIF=integer()))
+  
+  for (index in predictors_indices){
+    predictor_to_fit=names(ds)[index]
+    formula = paste(predictor_to_fit, '~')
+    pred_indices = predictors_indices[predictors_indices!=index]
+    predictors = paste(names(ds)[pred_indices],collapse='+')
+    formula = paste(formula, predictors)
+    #print(formula)
+    model = lm(formula, data=ds)
+    r.squared = summary(model)$r.squared
+    vif = 1/(1-r.squared)
+    
+    
+    ggplotDF=rbind(ggplotDF, c(predictor_to_fit, vif))
+  }
+  
+  names(ggplotDF) = c('Predictor','VIF')
+  print(ggplotDF)
+  gg <- ggplot(data=ggplotDF, aes(x=Predictor,y=VIF))+geom_bar(stat="identity")+coord_flip()+
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+  
+  print(gg)
+}
+
+#check any collinearity
+vifs.plot(ds, 2:length(ds))
+
+# 4) outliers -------------------------------------------------------------
+
+outlier.plot <- function(fit, interactive=T) {
+  stud_res=studres(best_model) #studentized residuals
+  boundaries = c(-3,3)
+  ggplotDF =  cbind(c(1:length(stud_res)),
+                    data.frame(stud_res), 
+                    rep(boundaries[1], length(hats)),
+                    rep(boundaries[2], length(hats)))
+  names(ggplotDF) = c("point", "studentized_residual",'LowerBound', 'UpperBound')
+  ggplot(ggplotDF,aes(point, studentized_residual))+
+    geom_point(shape=21, color="#86bbd8", fill="#86bbd8", size=2.5)+
+    geom_line(aes(point, LowerBound), color="red")+
+    geom_line(aes(point, UpperBound), color="red")+
+    labs(x = 'Points',
+         y = 'studentized residual')
+  
+  if (interactive) ggplotly()
+  
+  outliers_indices = as.vector(which(abs(stud_res) > OUTLIER_STUDENTIZED_RES_THRESHOLD))
+  return(outliers_indices)
+}
+outlier.plot(best_model)
+#outliers_indices = which(abs(stud_res) > OUTLIER_STUDENTIZED_RES_THRESHOLD)
+
+# remove outliers from dataset and re-fit the model
+# ...
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ci sono outlier : osservazione n° 35
 myds = myds[-35,]
@@ -182,8 +286,5 @@ best_model= lm(Y_MentalConcentration ~
                                  ,data=myds, y=TRUE,x=TRUE)
 summary(best_model)
 mean_cvMSE(best_model, 10, 10)
-w# 3) high leverage points ------ 
-hats <- as.data.frame(hatvalues(best_model))
-# non c'è nessun valore >>(p+1)/n
 
 
