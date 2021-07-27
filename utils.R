@@ -1,3 +1,25 @@
+library(matrixcalc)
+library(car)
+library(plotly)
+library(stringr)
+library(glmnet)
+library(lmvar)
+library(MASS)
+library(parallel)
+library(purrr)
+library(olsrr)
+library(ggcorrplot)
+library(zeallot)
+library(pheatmap)
+library(leaps)
+library(MuMIn)
+library(scales)
+library(VGAM)
+library(matlib)
+library(sjmisc)
+library(ggfortify)
+library(DHARMa)
+
 #================ Config constants =====================
 
 POLYNOMIAL_REGEX  = '.*I\\((.*)\\^(\\d+)\\)'
@@ -33,6 +55,10 @@ lm.byIndices <- function (data, indices, addIntercept=T) {
 
 lm.byFormulaChunks <- function(data, chunks) {
   lm(paste(utils.Y_LABEL, " ~ ", paste(possibleDependencies, collapse = ' + ')), data=ds, y=T, x=T)
+}
+
+lm.refit <- function(model, data) {
+  lm(formula(model), data=data, x=T, y=T)
 }
 
 
@@ -439,13 +465,15 @@ lm.shrinkage <- function (ds_scaled, lambda_grid, nMSE = 1000, folds = 5, showPl
   
   z = vector(mode="list", length=2)
   names(z) = c("lasso", "ridge")
-  z$ridge = vector(mode="list", length=2)
-  names(z$ridge) = c("model", "cvm")
+  z$ridge = vector(mode="list", length=3)
+  names(z$ridge) = c("model", "cvm", "bestlambda")
   z$ridge$cvm = 0
-  z$lasso = vector(mode="list", length=2)
-  names(z$lasso) = c("model", "cvm")
+  z$lasso = vector(mode="list", length=3)
+  names(z$lasso) = c("model", "cvm", "bestlambda")
   z$lasso$cvm = 0
   
+  ridge=NULL
+  lasso=NULL
   for (i in 1:nMSE) {
     ridge = cv.glmnet(x, y, alpha = 0, lambda = lambda_grid, nfolds = folds, trace.it = 0)
     lasso = cv.glmnet(x, y, alpha = 1, lambda = lambda_grid, nfolds = folds, trace.it = 0)
@@ -454,17 +482,17 @@ lm.shrinkage <- function (ds_scaled, lambda_grid, nMSE = 1000, folds = 5, showPl
   }
   
   
-  best_index_ridge = which.min(z$ridge$cvm)
-  z$ridge$model = cv.glmnet(x, y, alpha=1, lambda = c( lambda_grid[best_index_ridge], lambda_grid[1]), trace.it = 0, nfolds = folds)
+  z$ridge$bestlambda = lambda_grid[which.min(z$ridge$cvm)]
+  z$ridge$model = ridge
   
-  best_index_lasso = which.min(z$lasso$cvm)
-  z$lasso$model = cv.glmnet(x, y, alpha=1, lambda = c( lambda_grid[best_index_lasso], lambda_grid[1]), trace.it = 0, nfolds = folds)
+  z$lasso$bestlambda = lambda_grid[which.min(z$lasso$cvm)]
+  z$lasso$model = lasso
   
   z$ridge$cvm = z$ridge$cvm/nMSE
   z$lasso$cvm = z$lasso$cvm/nMSE
   
   if(showPlot) {
-    lm.plotRidgeVsLasso(lambda_grid, z$ridge$cvm, z$lasso$cvm)
+    lm.plotLassoVsRidge(lambda_grid, z$lasso$cvm, z$ridge$cvm)
   }
   
   return(z)
@@ -498,7 +526,7 @@ lm.elasticNet <- function(ds_scaled, alpha_grid, lambda_grid, nMSE, folds, best_
 }
 
 
-lm.plotRidgeVsLasso <- function(lambda_grid, lassoCvm, ridgeCvm) {
+lm.plotLassoVsRidge <- function(lambda_grid, lassoCvm, ridgeCvm) {
   colors = list()
   colors$lasso = 'darkblue'
   colors$ridge = 'red'
@@ -515,7 +543,7 @@ lm.plotRidgeVsLasso <- function(lambda_grid, lassoCvm, ridgeCvm) {
     labs(x = 'Lambda',
          y = 'cross validation MSE') +
     scale_color_manual(name = "Legend", values = c("Lasso" = colors$lasso, "Ridge" = colors$ridge)) +
-    ggtitle("Ridge vs Lasso") +
+    ggtitle("Lasso vs Ridge") +
     scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x))
   
   print(gg_plot)
@@ -553,3 +581,86 @@ lm.plotElasticNet <- function(alpha_grid, MSEs, best_mse = NULL) {
   print(gg_plot)
 }
 
+hat.plot <- function(fit, showPlot=T, interactive=T) {
+  p <- length(coefficients(fit))
+  n <- length(fitted(fit))
+  hats=hatvalues(fit)
+  boundaries = c(2,3)*p/n
+  ggplotDF =  cbind(c(1:length(hats)),
+                    data.frame(hats), 
+                    rep(boundaries[1], length(hats)),
+                    rep(boundaries[2], length(hats)))
+  names(ggplotDF) = c("point", "Hat",'LowerBound', 'UpperBound')
+  gg_plot <- ggplot(ggplotDF,aes(point, Hat)) +
+    geom_point(shape=21, color="#86bbd8", fill="#86bbd8", size=2.5)+
+    geom_line(aes(point, LowerBound), color="red")+
+    geom_line(aes(point, UpperBound), color="red")+
+    labs(x = 'Points',
+         y = 'Hat values')
+  
+  
+  if (interactive) print(ggplotly()) else if(showPlot) print(gg_plot)
+  return(hats)
+}
+
+vifs.plot <- function(ds){
+  #da modificare e tenere in considerazione anche le intearzioni. ci devo pensare
+  
+  collinearity_models = list()
+  
+  ggplotDF = (data.frame(Predictor=integer(), VIF=integer()))
+  
+  predictor_indices = 2:(utils.PREDICTORS_NUMBER+1)
+  vifs_indices = 2:length(ds)
+  
+  for (index in vifs_indices){
+    predictor_to_fit=names(ds)[index]
+    formula = paste(predictor_to_fit, '~')
+    pred_indices = predictor_indices[predictor_indices!=index]
+    
+    predictors = paste(names(ds)[pred_indices],collapse='+')
+    formula = paste(formula, predictors)
+    model = lm(formula, data=ds)
+    collinearity_models[predictor_to_fit] = list(model)
+    r.squared = summary(model)$r.squared
+    vif = 1/(1-r.squared)
+    
+    ggplotDF=rbind(ggplotDF, c(predictor_to_fit, vif))
+  }
+  
+  names(ggplotDF) = c('Predictor','VIF')
+  print(ggplotDF)
+  gg <- ggplot(data=ggplotDF, aes(x=Predictor,y=VIF))+geom_bar(stat="identity")+coord_flip()+
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+  
+  print(gg)
+  
+  return(collinearity_models)
+}
+
+outlier.plot <- function(fit, showPlot=T, interactive=T) {
+  OUTLIER_STUDENTIZED_RES_THRESHOLD = 3
+  
+  stud_res=studres(best_model) #studentized residuals
+  boundaries = c(-OUTLIER_STUDENTIZED_RES_THRESHOLD,OUTLIER_STUDENTIZED_RES_THRESHOLD)
+  ggplotDF =  cbind(c(1:length(stud_res)),
+                    data.frame(stud_res), 
+                    rep(boundaries[1], length(stud_res)),
+                    rep(boundaries[2], length(stud_res)))
+  names(ggplotDF) = c("point", "studentized_residual",'LowerBound', 'UpperBound')
+  gg_plot <- ggplot(ggplotDF,aes(point, studentized_residual))+
+    geom_point(shape=21, color="#86bbd8", fill="#86bbd8", size=2.5)+
+    geom_line(aes(point, LowerBound), color="red")+
+    geom_line(aes(point, UpperBound), color="red")+
+    labs(x = 'Points',
+         y = 'studentized residual')
+  
+  if (interactive) print(ggplotly()) else if(showPlot) print(gg_plot)
+  
+  outliers_indices = as.vector(which(abs(stud_res) > OUTLIER_STUDENTIZED_RES_THRESHOLD))
+  return(outliers_indices)
+}
+
+predictWithGlmnet <- function(obj, ...) {
+  predict(obj$model, s = obj$bestlambda, ...)
+}
