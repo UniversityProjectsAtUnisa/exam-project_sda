@@ -19,6 +19,7 @@ library(matlib)
 library(sjmisc)
 library(ggfortify)
 library(DHARMa)
+library(plotmo)
 
 #================ Config constants =====================
 
