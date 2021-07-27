@@ -126,12 +126,7 @@ coef(models$lasso$model, s = models$lasso$bestlambda)
 coef(models$ridge$model, s = models$ridge$bestlambda)
 
 
-predictedY = predictWithGlmnet(models$lasso, newx=as.matrix(ds_scaled[,-1]))
-names(predictedY) = Y_LABEL
-
-fakedata = data.frame(cbind(predictedY, ds_scaled[-1]))
-names(fakedata) = c(Y_LABEL, names(fakedata)[2:length(names(fakedata))])
-convertedModel = lm(paste(Y_LABEL, "~ ."), data=fakedata, x=T, y=T)
+# predictedY = predictWithGlmnet(models$lasso, newx=as.matrix(ds_scaled[,-1]))
 
 #============================= ELASTIC NET  ===============================
 
