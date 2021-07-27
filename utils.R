@@ -97,7 +97,10 @@ addInteractions = function(data, chunks) {
     }
   }
   
-  return(cbind(data, interaction_matrix))
+  col_names = names(data)
+  data = cbind(data, interaction_matrix)
+  names(data) = c(col_names, chunks)
+  return(data)
 }
 
 
@@ -179,11 +182,9 @@ addNonLinearities = function(data, chunks) {
   }
   
   
-  col_names = names(data)
   interaction_chunks = chunks
   if(length(interaction_chunks) > 0)  {
     data = addInteractions(data, interaction_chunks)
-    names(data) = c(col_names, interaction_chunks)
   }
    
   return(data)

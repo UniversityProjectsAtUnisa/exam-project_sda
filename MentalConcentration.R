@@ -16,6 +16,7 @@ library(MuMIn)
 library(scales)
 library(VGAM)
 library(matlib)
+library(sjmisc)
 library(ggfortify)
 source('./utils.R')
 
@@ -124,7 +125,8 @@ plot(bestSubsetOSE, 1)
 possibleRelationships = list(
   'I(X_MatchRelevance^2)'
 )
-bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=2, folds=2, method="forward", nvmax=15, verbose=T)
+bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=2, folds=2, method="forward", nvmax=8, verbose=T)
+bestSubset = bestSubsets$model[[which.min(bestSubsets$MSE)]]
 
 ds.prettyPlot(bestSubsets$MSE, xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
 
@@ -189,31 +191,61 @@ hat.plot <- function(fit, interactive=T) {
                     rep(boundaries[1], length(hats)),
                     rep(boundaries[2], length(hats)))
   names(ggplotDF) = c("point", "Hat",'LowerBound', 'UpperBound')
-  ggplot(ggplotDF,aes(point, Hat))+
+  ggplot(ggplotDF,aes(point, Hat)) +
     geom_point(shape=21, color="#86bbd8", fill="#86bbd8", size=2.5)+
     geom_line(aes(point, LowerBound), color="red")+
     geom_line(aes(point, UpperBound), color="red")+
     labs(x = 'Points',
          y = 'Hat values')
   
-  if (interactive) ggplotly()
+  
+  if (interactive) print(ggplotly())
+  return(hats)
 }
 hat.plot(best_model)
 
 # 4) collinearity ---------------------------------------------------------
-vifs.plot <- function(ds, predictors_indices){
+vifs.plot <- function(ds, interactive=T){
   #da modificare e tenere in considerazione anche le intearzioni. ci devo pensare
+  
+  collinearity_models = list()
+  
+  interactions = list()
+  for(i in 1:(PREDICTORS_NUMBER-1) ){
+    for(j in (i+1):PREDICTORS_NUMBER){
+      interactions = append(interactions, paste(names(ds)[i+1], "*", names(ds)[j+1], sep=""))
+    }
+  }
+  ds = addInteractions(ds, interactions)
   
   ggplotDF = (data.frame(Predictor=integer(), VIF=integer()))
   
-  for (index in predictors_indices){
+  predictor_indices = 2:(utils.PREDICTORS_NUMBER+1)
+  vifs_indices = 2:length(ds)
+  
+  for (index in vifs_indices){
     predictor_to_fit=names(ds)[index]
     formula = paste(predictor_to_fit, '~')
-    pred_indices = predictors_indices[predictors_indices!=index]
+    pred_indices = NULL
+    if(str_contains(predictor_to_fit, "*")) {
+      main_effects = str_split(predictor_to_fit, "\\*")[[1]]
+      first = main_effects[1]
+      first_index = which(names(ds) == first) 
+      second = main_effects[2]
+      second_index = which(names(ds) == second)
+      pred_indices = predictor_indices[predictor_indices!=second_index][predictor_indices!=first_index]
+      pred_indices = na.omit(pred_indices)
+    } else {
+      pred_indices = predictor_indices[predictor_indices!=index]
+    }
     predictors = paste(names(ds)[pred_indices],collapse='+')
     formula = paste(formula, predictors)
-    #print(formula)
+    if(predictor_to_fit == "X_ClimaticConditions*X_SupportersImpact"){
+      model = lm(formula, data=ds)
+      readline(prompt="Press [enter] to continue")
+    }
     model = lm(formula, data=ds)
+    collinearity_models[predictor_to_fit] = list(model)
     r.squared = summary(model)$r.squared
     vif = 1/(1-r.squared)
     
@@ -227,14 +259,60 @@ vifs.plot <- function(ds, predictors_indices){
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
   
   print(gg)
+  
+  return(collinearity_models)
 }
 
-#check any collinearity
-vifs.plot(ds, 2:length(ds))
+# check any collinearity
+collinearity_models = vifs.plot(ds)
+
+interactions_vs_main_effects.plot <- function(ds, interactive=T){
+  interactions_vs_main_effects_models = list()
+  
+  interactions = list()
+  for(i in 1:(PREDICTORS_NUMBER-1) ){
+    for(j in (i+1):PREDICTORS_NUMBER){
+      interactions = append(interactions, paste(names(ds)[i+1], "*", names(ds)[j+1], sep=""))
+    }
+  }
+  
+  ggplotDF = (data.frame(Predictor=integer(), RSQUARED=integer(), MSE=integer()))
+  
+  predictor_indices = 2:(utils.PREDICTORS_NUMBER+1)
+  vifs_indices = 2:length(ds)
+  
+  for (i in 1:length(interactions)){
+    formula = paste(interactions[i], '~')
+    main_effects = str_split(interactions[i], "\\*")[[1]]
+    first = main_effects[1]
+    second = main_effects[2]
+    formula = paste(formula, first, "+", second)
+    
+    model = lm(formula, data=ds, x=T, y=T)
+    # interactions_vs_main_effects_models[interactions[i]] = model
+    r.squared = summary(model)$r.squared
+    
+    MSE = mean_cvMSE(model, n = 2, k=2)
+    ggplotDF=rbind(ggplotDF, c(interactions[i], r.squared, MSE))
+    print(i)
+  }
+  
+  names(ggplotDF) = c('Predictor','RSQUARED', 'MSE')
+  print(ggplotDF)
+  # gg <- ggplot(data=ggplotDF, aes(x=Predictor,y=RSQUARED))+geom_bar(stat="identity")+coord_flip()+
+  #   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+  # 
+  # print(gg)
+  
+  # return(interactions_vs_main_effects_models)
+}
+
+interactions_vs_main_effects = interactions_vs_main_effects.plot(ds)
 
 # 4) outliers -------------------------------------------------------------
 
 outlier.plot <- function(fit, interactive=T) {
+  hats = hat.plot(fit, interactive=F)
   stud_res=studres(best_model) #studentized residuals
   boundaries = c(-3,3)
   ggplotDF =  cbind(c(1:length(stud_res)),
@@ -249,7 +327,7 @@ outlier.plot <- function(fit, interactive=T) {
     labs(x = 'Points',
          y = 'studentized residual')
   
-  if (interactive) ggplotly()
+  if (interactive) print(ggplotly())
   
   outliers_indices = as.vector(which(abs(stud_res) > OUTLIER_STUDENTIZED_RES_THRESHOLD))
   return(outliers_indices)
@@ -286,4 +364,4 @@ best_model= lm(Y_MentalConcentration ~
 summary(best_model)
 mean_cvMSE(best_model, 10, 10)
 
-
+"X_Temperature + X_Humidity + X_Altitude + X_ClimaticConditions + X_RestTimeFromLastMatch + X_AvgPlayerValue + X_MatchRelevance + X_AvgGoalConcededLastMatches + X_SupportersImpact + X_OpposingSupportersImpact"
