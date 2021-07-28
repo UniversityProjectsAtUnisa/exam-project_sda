@@ -392,7 +392,16 @@ exhaustiveSubsetSelection <- function (data, relationships, nMSE=1000, folds=5, 
   
   combination_number = (2^length(xlabels)) - 1
   
+  pb = NULL
+  if(verbose) pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
+                       max = combination_number, # Maximum value of the progress bar
+                       style = 3,    # Progress bar style (also available style = 1 and style = 2)
+                       width = 50,   # Progress bar width. Defaults to getOption("width")
+                       char = "=")   # Character used to create the bar
+  
 for(comb in 1:combination_number){
+    if(verbose) setTxtProgressBar(pb, comb)
+  
     f = paste(utils.Y_LABEL, " ~ ")
     for(k in 1:(length(xlabels))){
       if( bitwAnd( comb, 2^(k-1) ) > 0 ) {
@@ -415,6 +424,8 @@ for(comb in 1:combination_number){
       }
     }
   }
+  
+  close(pb)
   
   for(i in 1:length(bestSubsets$model)) {
     if(verbose) {
@@ -453,7 +464,16 @@ bestSubsetsByPredictorsNumber <- function (data, relationships, nMSE=1000, folds
     combinations = append(combinations, enum.choose(1:length(xlabels), i))
   }
   
+  pb = NULL
+  if(verbose) pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
+                                   max = length(combinations), # Maximum value of the progress bar
+                                   style = 3,    # Progress bar style (also available style = 1 and style = 2)
+                                   width = 50,   # Progress bar width. Defaults to getOption("width")
+                                   char = "=")   # Character used to create the bar
+  i = 0
   for(comb in combinations) {
+    i=i+1
+    if(verbose) setTxtProgressBar(pb, i)
     f = paste(utils.Y_LABEL, " ~ ")
     f = paste(f, paste(xlabels[comb], collapse=" + "))
     
@@ -502,6 +522,7 @@ bestSubsetsByPredictorsNumber <- function (data, relationships, nMSE=1000, folds
     }
   }
   
+  close(pb)
   
   for(i in 1:length(bestSubsets$model)) {
     if(verbose) {
