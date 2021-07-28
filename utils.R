@@ -55,7 +55,7 @@ lm.byIndices <- function (data, indices, addIntercept=T) {
 }
 
 lm.byFormulaChunks <- function(data, chunks) {
-  lm(paste(utils.Y_LABEL, " ~ ", paste(possibleDependencies, collapse = ' + ')), data=ds, y=T, x=T)
+  lm(paste(utils.Y_LABEL, " ~ ", paste(chunks, collapse = ' + ')), data=ds, y=T, x=T)
 }
 
 lm.refit <- function(model, data) {
@@ -95,6 +95,8 @@ ds.scale = function(ds) {
 lm.inspect = function(model, nMSE=1000, folds=5) {
   z <- list()
   
+  plot(model, which=1)
+  
   print("================= SUMMARY =================")
   z$summary <- summary(model)
   print(z$summary)
@@ -102,8 +104,6 @@ lm.inspect = function(model, nMSE=1000, folds=5) {
   print("==================  MSE  ==================")
   z$MSE <- mean_cvMSE(model, nMSE, folds)
   print(z$MSE)
-        
-  plot(model, which=1)
   
   invisible(z)
 }
@@ -218,18 +218,22 @@ addNonLinearities = function(data, chunks) {
 }
 
 inspectInteractionMatrix = function(data, default = 0, showHeatmap = F) {
-  interaction_matrix = matrix(default, utils.PREDICTORS_NUMBER-1, utils.PREDICTORS_NUMBER-1)
+  interaction_matrix = matrix(default, utils.PREDICTORS_NUMBER, utils.PREDICTORS_NUMBER)
   
   base_formula <- paste(Y_LABEL, "~", paste(names(ds)[-1], collapse=" + "))
-  for(i in 1:(PREDICTORS_NUMBER-1) ){
-    for(j in (i+1):PREDICTORS_NUMBER){
-      f = paste(base_formula," + ", names(ds)[i+1]," * ",names(ds)[j+1])
+  for(i in 1:utils.PREDICTORS_NUMBER ){
+    for(j in 1:utils.PREDICTORS_NUMBER){
+      
+      if(i==j)  f = paste(base_formula," + I(", names(ds)[i+1],"^2)")
+      else      f = paste(base_formula," + ", names(ds)[i+1]," * ",names(ds)[j+1])
+      
       lm=lm(f, data=ds)
-      interaction_matrix[i,j-1]=summary(lm)$r.squared
+      interaction_matrix[i,j]=summary(lm)$r.squared
+      interaction_matrix[j,i]=summary(lm)$r.squared
     }
   }
-  colnames(interaction_matrix) <- names(ds)[c(-1, -2)]
-  rownames(interaction_matrix) <- names(ds)[3:(PREDICTORS_NUMBER+1)]
+  colnames(interaction_matrix) <- names(ds)[-1]
+  rownames(interaction_matrix) <- names(ds)[-1]
   
   if(showHeatmap) {
     im.showHeatmap(interaction_matrix)
@@ -239,7 +243,7 @@ inspectInteractionMatrix = function(data, default = 0, showHeatmap = F) {
 }
 
 im.showHeatmap = function(interaction_matrix) {
-  pheatmap(as.data.frame(interaction_matrix), display_numbers = T, color = colorRampPalette(c("navy", "white", "firebrick3"))(50))
+  pheatmap(as.data.frame(interaction_matrix), display_numbers = T, color = colorRampPalette(c("#ACE6FD", "#E93F74"))(50))
 }
 
 
@@ -421,6 +425,92 @@ for(comb in 1:combination_number){
   
   return(bestSubsets)
 
+}
+
+enum.choose <- function(x, k) {
+  if(k > length(x)) stop('k > length(x)')
+  if(choose(length(x), k)==1){
+    list(as.vector(combn(x, k)))
+  } else {
+    cbn <- combn(x, k)
+    lapply(seq(ncol(cbn)), function(i) cbn[,i])
+  }
+}
+
+
+
+bestSubsetsByPredictorsNumber <- function (data, relationships, nMSE=1000, folds=5, nPredictors, nSubsets, verbose=F) {
+  interaction_regex = INTERACTION_REGEX
+  bestSubsets = vector("list", 2)
+  names(bestSubsets) = c('model', 'MSE')
+  xlabels = c(names(data)[-1], relationships)
+  
+  bestSubsets$model = list()
+  bestSubsets$MSE = list()
+  
+  combinations = list()
+  for(i in 1:nPredictors){
+    combinations = append(combinations, enum.choose(1:length(xlabels), i))
+  }
+  
+  for(comb in combinations) {
+    f = paste(utils.Y_LABEL, " ~ ")
+    f = paste(f, paste(xlabels[comb], collapse=" + "))
+    
+    temp.model = lm(f, data=data, y=TRUE, x=TRUE)
+    
+    
+    
+    
+    if( (length(coef(temp.model))-1) == nPredictors) {
+      # Treat $model as a priority queue
+      # Insert
+      bestSubsets$model[[length(bestSubsets$model)+1]] = temp.model
+      
+      
+      
+      coefficientsList = map(bestSubsets$model, function(x){
+        predictors=names(x$coefficients)
+        
+        predictors = map(predictors, function(p) {
+          if(str_contains(p, ":")) {
+            elements = str_split(p, ":", simplify=T)
+            first_name = str_trim(elements[[1]])
+            second_name = str_trim(elements[[2]])
+            if(first_name < second_name) return(p)
+            return(paste(second_name, first_name, sep=":"))
+          }
+          return(p)
+        })
+        
+        predictors = sort(unlist(predictors))
+        
+        predictors = paste(predictors,collapse=" + ")
+        
+        return(predictors)
+      })
+      
+      
+      
+      
+      bestSubsets$model  = bestSubsets$model[!duplicated(coefficientsList)]
+      # Order
+      rsquaredList = map(bestSubsets$model, function(x) -summary(x)$r.squared)
+      bestSubsets$model = bestSubsets$model[order(unlist(rsquaredList))]
+      # Slice
+      bestSubsets$model = bestSubsets$model[1:min(nSubsets, length(bestSubsets$model))]
+    }
+  }
+  
+  
+  for(i in 1:length(bestSubsets$model)) {
+    if(verbose) {
+      print(i)
+    }
+    bestSubsets$MSE[[i]] <- mean_cvMSE(bestSubsets$model[[i]], nMSE, folds)
+  }
+  
+  return(bestSubsets)
 }
 
 
