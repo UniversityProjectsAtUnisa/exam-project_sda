@@ -34,7 +34,7 @@ utils.Y_LABEL = NULL
 
 #=======================================================
 
-#compute MSE , media su più cross validation
+#compute MSE , media su piï¿½ cross validation
 
 mean_cvMSE = function(model, n=1000, k=5){
   MSEs = vector(mode='numeric',n)
@@ -43,6 +43,18 @@ mean_cvMSE = function(model, n=1000, k=5){
   }
   return(mean(MSEs))
 }
+
+
+
+glm.mean_cvAccuracy = function(model, n=1000, k=5){
+  MSEs = vector(mode='numeric',n)
+  for (i in 1:n){
+    MSEs[i] = cv.lm(model, k = k)$MSE$mean
+  }
+  return(mean(MSEs))
+}
+
+
 
 lm.byIndices <- function (data, indices, addIntercept=T) {
   f <- paste(utils.Y_LABEL, "~")

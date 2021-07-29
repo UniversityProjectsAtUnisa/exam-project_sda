@@ -1,0 +1,23 @@
+{
+    "editor.fontFamily": "Fira Code iScript, monospace",
+    "editor.codeActionsOnSave": null,
+    "workbench.colorCustomizations": {
+        "scrollbar.shadow": "#000000"
+    },
+    "editor.tokenColorCustomizations": {
+        "comments": "#fad60b",
+        "textMateRules": [
+            {
+                "scope": [
+                    "string.quoted.docstring.multi.python",
+                    "string.quoted.docstring.multi.python punctuation.definition.string.begin.python",
+                    "string.quoted.docstring.multi.python punctuation.definition.string.end.python",
+                    "string.quoted.docstring.multi.python constant.character.escape.python"
+                ],
+                "settings": {
+                    "foreground": "#d4922f" //change to your preference
+                }
+            }
+        ],
+    },
+}
