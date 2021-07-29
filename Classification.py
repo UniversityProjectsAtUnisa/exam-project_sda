@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 # ==============================   CONFIG     ============================
 
 ABS_PATH = '/mnt/c/Users/marco/Documents/UNISA/SDA/progetto/SDAgruppo2'
+ABS_PATH= r"C:\Users\carbo\OneDrive\Documenti\Magistrale Carbone\2 sem\Statistical Data Analysis\aPROGETTO\SDAgruppo2"
 DATASET_FILENAME = 'ClassificationData_SDA_AH_group2.csv'
 Y_LABEL = 'Z_OppositeTeamDefence'
 PREDICTORS_NUMBER = 8
@@ -19,12 +20,25 @@ df = utils.read_dataset()
 
 # ======================= BASE LOGISTIC REGRESSION =======================
 
+
 # lr, X, y = utils.logisticRegression(df)
 # scores = utils.inspectLr(lr, X, y, k=5)
 
-utils.plot_heatmap(df)
-
+#utils.plot_heatmap(df)
+#plt.show()
 # print(scores)
+
+# ================BEST SUBSET SELECTION - deviance based =================
+possible_interactions =  (
+    ('Y_AvgTravelledDistance', 'Y_PhysicalEndurance'),
+    ('Y_EmotionalMotivation',  'Y_PhysicalEndurance'),
+    ('Y_Hyperthermia',         'Y_PhysicalEndurance'),
+    ('Y_AvgTravelledDistance', 'Y_PhysicalEndurance'),
+    ('Y_MentalConcentration',  'Y_Dehydration'),
+)
+subsets = utils.best_subset(df, possible_interactions, nfolds = 5, nCV = 5, verbose=True)
+plt.show()
+
 
 
 # # ======================= BASE LOGISTIC REGRESSION =======================
