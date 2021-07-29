@@ -107,8 +107,6 @@ ds.scale = function(ds) {
 lm.inspect = function(model, nMSE=1000, folds=5) {
   z <- list()
   
-  plot(model, which=1)
-  
   print("================= SUMMARY =================")
   z$summary <- summary(model)
   print(z$summary)
@@ -116,6 +114,8 @@ lm.inspect = function(model, nMSE=1000, folds=5) {
   print("==================  MSE  ==================")
   z$MSE <- mean_cvMSE(model, nMSE, folds)
   print(z$MSE)
+  
+  plot(model, which=1)
   
   invisible(z)
 }
