@@ -17,7 +17,10 @@ ds = ds.init(DATASET_FILENAME, Z_LABEL, PREDICTORS_NUMBER)
 
 # Logistic regression
 
-glm = glm(paste(Z_LABEL,"~ .", sep=""), data=ds, family="binomial")
+# formula = 'Z_OppositeTeamDefence ~ Y_AvgTravelledDistance*Y_MentalConcentration + Y_Dehydration + Y_Hyperthermia + Y_AvgSpeed + Y_AvgTravelledDistance + Y_PressingCapability + Y_PhysicalEndurance + Y_MentalConcentration + Y_EmotionalMotivation'
+formula = 'Z_OppositeTeamDefence ~ 0 + Y_Dehydration + Y_Hyperthermia + Y_AvgSpeed + Y_AvgTravelledDistance + Y_PressingCapability + Y_PhysicalEndurance + Y_MentalConcentration + Y_EmotionalMotivation'
+formula = 'Z_OppositeTeamDefence ~ Y_Dehydration + Y_Hyperthermia + Y_AvgSpeed + Y_AvgTravelledDistance + Y_PressingCapability + Y_PhysicalEndurance + Y_MentalConcentration + Y_EmotionalMotivation'
+glm = glm(formula, data=ds, family="binomial")
 summary(glm)
 
 

@@ -170,7 +170,7 @@ possibleRelationships = list(
 
 N_PREDICTORS_TO_INSPECT = 5
 bestSubsets = bestSubsetsByPredictorsNumber(ds, relationships=possibleRelationships, nMSE=10, folds=5, nPredictors=N_PREDICTORS_TO_INSPECT, nSubsets=10, verbose=T)
-ds.prettyPlot(bestSubsets$MSE, xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
+ds.prettyPlot(bestSubsets$MSE, xdata=unlist(map(bestSubsets$model, function(model) summary(model)$r.squared)), xlab="Rank", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
 
 bestSubset = bestSubsets$model[[which.min(bestSubsets$MSE)]]
 

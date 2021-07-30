@@ -548,11 +548,13 @@ bestSubsetsByPredictorsNumber <- function (data, relationships, nMSE=1000, folds
 
 
 
-ds.prettyPlot = function (data, xlabel, ylabel, title) {
+ds.prettyPlot = function (data, xlabel, ylabel, title, xdata=NULL) {
   data = if(is.list(data)) unlist(data)
   
   maxMSE = getSubsetsMaxMSE(data)
-  ggplotDF =  cbind(c(1:length(data)),
+
+  if(is.null(xdata)) xdata = c(1:length(data))
+  ggplotDF =  cbind(xdata,
                     data.frame(data), 
                     rep(maxMSE, length(data)) )
   names(ggplotDF) = c("x", "y", 'z')

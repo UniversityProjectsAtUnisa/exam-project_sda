@@ -11,6 +11,9 @@ setwd(ABS_PATH)
 source('./utils.R')
 ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
 
+for (a_ in 1:10000){
+  ds = rbind(ds, runif(n = ncol(ds), min = 1, max = 10))
+}
 
 #==================== REGRESSION WITHOUT INTERACTIONS ====================
 
@@ -103,15 +106,50 @@ possibleRelationships = list(
   'I(X_OpposingSupportersImpact^2)',
   'X_ClimaticConditions*X_RestTimeFromLastMatch',
   'X_Altitude*X_SupportersImpact', 
+  'X_Altitude*X_AvgPlayerValue', 
   'X_Altitude*X_Humidity'
 )    
 
+start.time <- Sys.time()
 bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=10, folds=5, verbose=T, method="exhaustive")
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
 ds.prettyPlot(bestSubsets$MSE, xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
 
 bestSubset = bestSubsets$model[[which.min(bestSubsets$MSE)]]
 
 lm.inspect(bestSubset, 10, 10)
+
+# [1] "================= SUMMARY ================="
+# 
+# Call:
+#   lm(formula = f, data = data, x = TRUE, y = TRUE)
+# 
+# Residuals:
+#   Min      1Q  Median      3Q     Max 
+# -3.2384 -0.8265  0.1915  0.9496  2.4500 
+# 
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)                     7.7785     4.0278   1.931 0.062358 .  
+# X_Temperature                  -3.5865     0.9873  -3.633 0.000971 ***
+#   X_Altitude                    -19.8982     6.2588  -3.179 0.003269 ** 
+#   X_RestTimeFromLastMatch         4.2249     0.7471   5.655 2.95e-06 ***
+#   X_AvgPlayerValue                5.9285     0.9934   5.968 1.19e-06 ***
+#   X_MatchRelevance                6.6044     2.5975   2.543 0.016039 *  
+#   X_SupportersImpact             -9.3866     6.7205  -1.397 0.172114    
+# X_Altitude:X_SupportersImpact  37.0298    12.1193   3.055 0.004507 ** 
+#   ---
+#   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+# 
+# Residual standard error: 1.452 on 32 degrees of freedom
+# Multiple R-squared:  0.8018,	Adjusted R-squared:  0.7585 
+# F-statistic:  18.5 on 7 and 32 DF,  p-value: 1.348e-09
+# 
+# [1] "==================  MSE  =================="
+# [1] 2.874053
+
 
 
 #=============  BEST SUBSETS FOR SELECTED NUMBER OF PREDICTORS   ===============
@@ -122,27 +160,46 @@ possibleRelationships = list(
   'I(X_OpposingSupportersImpact^2)',
   'X_ClimaticConditions*X_RestTimeFromLastMatch',
   'X_Altitude*X_SupportersImpact', 
+  'X_Altitude*X_AvgPlayerValue', 
   'X_Altitude*X_Humidity'
 )    
 
-N_PREDICTORS_TO_INSPECT = 5
+N_PREDICTORS_TO_INSPECT = 7
 bestSubsets = bestSubsetsByPredictorsNumber(ds, relationships=possibleRelationships, nMSE=10, folds=5, nPredictors=N_PREDICTORS_TO_INSPECT, nSubsets=10, verbose=T)
-ds.prettyPlot(bestSubsets$MSE, xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
+ds.prettyPlot(bestSubsets$MSE, xlab="Rank", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
 
 bestSubset = bestSubsets$model[[which.min(bestSubsets$MSE)]]
 
 lm.inspect(bestSubset, 10, 10)
 
-#   BEST MODEL with less coefficients
+# [1] "================= SUMMARY ================="
 # 
-#                           Estimate Std. Error t value Pr(>|t|)    
-#   (Intercept)               -2.846      2.356  -1.208 0.235333    
-#   X_Temperature             -4.050      1.083  -3.741 0.000675 ***
-#   X_RestTimeFromLastMatch    4.020      0.832   4.831 2.84e-05 ***
-#   X_AvgPlayerValue           5.127      1.077   4.762 3.49e-05 ***
-#   X_MatchRelevance          10.575      2.537   4.169 0.000199 ***
-#   X_SupportersImpact         8.714      3.044   2.862 0.007149 ** 
-
+# Call:
+#   lm(formula = f, data = data, x = TRUE, y = TRUE)
+# 
+# Residuals:
+#   Min      1Q  Median      3Q     Max 
+# -3.2384 -0.8265  0.1915  0.9496  2.4500 
+# 
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)                     7.7785     4.0278   1.931 0.062358 .  
+# X_Temperature                  -3.5865     0.9873  -3.633 0.000971 ***
+#   X_RestTimeFromLastMatch         4.2249     0.7471   5.655 2.95e-06 ***
+#   X_AvgPlayerValue                5.9285     0.9934   5.968 1.19e-06 ***
+#   X_MatchRelevance                6.6044     2.5975   2.543 0.016039 *  
+#   X_Altitude                    -19.8982     6.2588  -3.179 0.003269 ** 
+#   X_SupportersImpact             -9.3866     6.7205  -1.397 0.172114    
+# X_Altitude:X_SupportersImpact  37.0298    12.1193   3.055 0.004507 ** 
+#   ---
+#   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+# 
+# Residual standard error: 1.452 on 32 degrees of freedom
+# Multiple R-squared:  0.8018,	Adjusted R-squared:  0.7585 
+# F-statistic:  18.5 on 7 and 32 DF,  p-value: 1.348e-09
+# 
+# [1] "==================  MSE  =================="
+# [1] 2.839954
 
 #=================== FORWARD SELECTION WITH INTERACTIONS =======================
 
@@ -162,7 +219,7 @@ possibleRelationships = list(
 bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=10, folds=5, method="forward", nvmax=8, verbose=T)
 bestSubset = bestSubsets$model[[which.min(bestSubsets$MSE)]]
 
-ds.prettyPlot(bestSubsets$MSE, xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
+ds.prettyPlot(bestSubsets$MSE, xdata=unlist(map(bestSubsets$model, function(model) summary(model)$r.squared)), xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
 
 
 #============================  RIDGE E LASSO   =================================
@@ -173,6 +230,7 @@ bestInteractions = list(
   'I(X_OpposingSupportersImpact^2)',
   'X_ClimaticConditions*X_RestTimeFromLastMatch',
   'X_Altitude*X_SupportersImpact', 
+  'X_Altitude*X_AvgPlayerValue', 
   'X_Altitude*X_Humidity'
 )    
 ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
@@ -180,11 +238,30 @@ ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
 lambda_grid = 10^seq(4, -6, length = 10000)
 
 models = lm.shrinkage(ds_scaled, lambda_grid, nMSE=10, folds=10, showPlot=T)
+min(models$ridge$cvm)
 coef(models$lasso$model, s = models$lasso$bestlambda)
 coef(models$ridge$model, s = models$ridge$bestlambda)
 
+# BEST IN ASSOLUTO: PER LA PRIMA VOLTA RIDGE VA MEGLIO !!!!!!!!
+# s1
+# (Intercept)                                  10.72554847
+# X_Temperature                                -0.27553818
+# X_Humidity                                   -0.02425850
+# X_Altitude                                   -0.32459382
+# X_ClimaticConditions                         -0.08712657
+# X_RestTimeFromLastMatch                       0.47367753
+# X_AvgPlayerValue                              1.43017436
+# X_MatchRelevance                              0.96249278
+# X_AvgGoalConcededLastMatches                  0.28148484
+# X_SupportersImpact                            0.38279557
+# X_OpposingSupportersImpact                   -0.39000564
+# I(X_RestTimeFromLastMatch^2)                  0.51035815
+# I(X_OpposingSupportersImpact^2)              -0.01914322
+# X_ClimaticConditions*X_RestTimeFromLastMatch  0.24163688
+# X_Altitude*X_SupportersImpact                -0.22311179
+# X_Altitude*X_AvgPlayerValue                   1.08411235
+# X_Altitude*X_Humidity                        -0.18467249
 
-# predictedY = predictWithGlmnet(models$lasso, newx=as.matrix(ds_scaled[,-1]))
 
 #============================= ELASTIC NET  ===============================
 
@@ -193,6 +270,7 @@ bestInteractions = list(
   'I(X_OpposingSupportersImpact^2)',
   'X_ClimaticConditions*X_RestTimeFromLastMatch',
   'X_Altitude*X_SupportersImpact', 
+  'X_Altitude*X_AvgPlayerValue', 
   'X_Altitude*X_Humidity'
 )    
 ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
@@ -209,11 +287,13 @@ lm.plotElasticNet(alpha_grid, MSEs, best_mse)
 #======================= LINEAR REGRESSION - ISSUES =======================
 
 best_model = lm.byFormulaChunks(ds, list(
-    "X_Temperature",
-    "I(X_ClimaticConditions^2)",
-    "X_RestTimeFromLastMatch",
-    "X_AvgPlayerValue",
-    "X_RestTimeFromLastMatch:X_AvgPlayerValue"
+  "X_Temperature",
+  "X_RestTimeFromLastMatch",
+  "X_AvgPlayerValue",
+  "X_MatchRelevance",
+  "X_Altitude",
+  "X_SupportersImpact",
+  "X_Altitude*X_SupportersImpact"
 ))
 
 # the best model to analyze
@@ -242,20 +322,21 @@ outlier_indices = c(3)
 
 # x) refit ------------------------------------------------------------
 
-indices_to_be_removed = c(40)
+indices_to_be_removed = c(32)
 
 if(length(indices_to_be_removed) > 0) {
   ds = ds[-indices_to_be_removed,]
 }
 best_model = lm.refit(best_model, ds)
 
-lm.inspect(best_model, 5, 5)
+lm.inspect(best_model, 10, 10)
 
 
 #======================= CONCLUSION =======================
 
-best_formula = "Y_AvgSpeed ~ X_Temperature + I(X_ClimaticConditions^2) + X_RestTimeFromLastMatch + 
-    X_AvgPlayerValue + X_RestTimeFromLastMatch:X_AvgPlayerValue"
+best_formula = "Y_MentalConcentration ~ X_Temperature + X_RestTimeFromLastMatch + 
+    X_AvgPlayerValue + X_MatchRelevance + X_Altitude + X_SupportersImpact + 
+    X_Altitude * X_SupportersImpact"
 best_summary = '
 [1] "================= SUMMARY ================="
 
@@ -264,24 +345,26 @@ lm(formula = formula(model), data = data, x = T, y = T)
 
 Residuals:
     Min      1Q  Median      3Q     Max 
--2.8045 -0.7973  0.1838  0.8092  2.5491 
+-3.0979 -0.8151  0.2151  0.9885  2.3031 
 
 Coefficients:
-                                         Estimate Std. Error t value Pr(>|t|)    
-(Intercept)                               -2.6659     1.4545  -1.833   0.0759 .  
-X_Temperature                             -4.1141     0.8142  -5.053 1.58e-05 ***
-I(X_ClimaticConditions^2)                 -6.2975     2.4425  -2.578   0.0146 *  
-X_RestTimeFromLastMatch                    9.0207     1.6566   5.445 4.95e-06 ***
-X_AvgPlayerValue                          10.4910     1.9834   5.289 7.85e-06 ***
-X_RestTimeFromLastMatch:X_AvgPlayerValue  -6.6418     2.7427  -2.422   0.0211 *  
+                              Estimate Std. Error t value Pr(>|t|)    
+(Intercept)                     7.7389     4.0440   1.914  0.06493 .  
+X_Temperature                  -3.3043     1.0435  -3.167  0.00345 ** 
+X_RestTimeFromLastMatch         4.2696     0.7518   5.679 3.07e-06 ***
+X_AvgPlayerValue                5.7459     1.0194   5.636 3.46e-06 ***
+X_MatchRelevance                6.6053     2.6078   2.533  0.01659 *  
+X_Altitude                    -19.3112     6.3201  -3.056  0.00459 ** 
+X_SupportersImpact             -9.4490     6.7475  -1.400  0.17133    
+X_Altitude:X_SupportersImpact  35.7317    12.2594   2.915  0.00656 ** 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 1.33 on 33 degrees of freedom
-Multiple R-squared:  0.8299,	Adjusted R-squared:  0.8042 
-F-statistic: 32.21 on 5 and 33 DF,  p-value: 8.74e-12
+Residual standard error: 1.457 on 31 degrees of freedom
+Multiple R-squared:  0.7823,	Adjusted R-squared:  0.7332 
+F-statistic: 15.92 on 7 and 31 DF,  p-value: 1.142e-08
 
 [1] "==================  MSE  =================="
-[1] 2.043521
+[1] 3.025554
 '
 best_model = lm(best_formula, data=ds)

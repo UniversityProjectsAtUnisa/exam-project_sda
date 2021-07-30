@@ -24,8 +24,8 @@ df = utils.read_dataset()
 # lr, X, y = utils.logisticRegression(df)
 # scores = utils.inspectLr(lr, X, y, k=5)
 
-#utils.plot_heatmap(df)
-#plt.show()
+# utils.plot_heatmap(df)
+# plt.show()
 # print(scores)
 
 # ================BEST SUBSET SELECTION - deviance based =================
