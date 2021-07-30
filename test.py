@@ -29,6 +29,20 @@ df = utils_.read_dataset()
 
 X, y = utils_.getXy(df)
 
+from importlib import reload
+reload(utils)
+utils_ = utils.Utils(ABS_PATH, DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+df = utils_.read_dataset()
+
+possible_interactions =  (
+    ('Y_AvgTravelledDistance', 'Y_PhysicalEndurance'),
+    ('Y_EmotionalMotivation',  'Y_PhysicalEndurance'),
+    ('Y_Hyperthermia',         'Y_PhysicalEndurance'),
+    ('Y_AvgTravelledDistance', 'Y_PhysicalEndurance'),
+    ('Y_MentalConcentration',  'Y_Dehydration'),
+)
+subsets = utils_.best_subset(df, possible_interactions, nfolds = 5, nCV = 5, verbose=True)
+
 # interaction_column = X['Y_AvgTravelledDistance'] * X['Y_MentalConcentration']
 # XCattiva = pd.concat([X, interaction_column.to_frame()], axis=1)
 # XCattiva = interaction_column.to_frame()

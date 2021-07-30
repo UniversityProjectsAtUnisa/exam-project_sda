@@ -14,7 +14,26 @@ from itertools import chain, combinations
 from tqdm import tqdm
 from sklearn.model_selection import StratifiedKFold
 from sklearn import metrics
+import cProfile
+import pstats
+import io
 
+
+def profile(fnc):
+    """A decorator that uses cProfile to profile a function"""
+    def inner(*args, **kwargs):
+        pr = cProfile.Profile()
+        pr.enable()
+        retval = fnc(*args, **kwargs)
+        pr.disable()
+        s = io.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
+        return retval
+
+    return inner
 
 class Utils:
     def __init__(self, path, filename, y_label, predictors_number):
@@ -24,7 +43,7 @@ class Utils:
         self.predictors_number = predictors_number
 
     def create_classifier(self):
-        return LogisticRegression(max_iter=1000, penalty='none')
+        return LogisticRegression(max_iter=100000, penalty='none')
 
     def read_dataset(self):
         return pd.read_csv(os.path.join(self.path, self.filename))
@@ -110,6 +129,7 @@ class Utils:
         s = list(iterable)
         return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
+    @profile
     def best_subset(self, df: pd.DataFrame, possible_interactions, nfolds=5, nCV=5, verbose=True):
         n_predictors = len(possible_interactions) + self.predictors_number
         X, _ = self.getXy(df)
