@@ -1,5 +1,3 @@
-source('./utils.R')
-
 #==============================   CONFIG     ============================
 
 ABS_PATH = 'C:/Users/gorra/Desktop/new_git/SDAgruppo2'
@@ -10,6 +8,7 @@ PREDICTORS_NUMBER = 10
 #================================ START =================================
 
 setwd(ABS_PATH)
+source('./utils.R')
 ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
 
 #==================== REGRESSION WITHOUT INTERACTIONS ====================
@@ -137,7 +136,9 @@ MSEs = lm.elasticNet(ds_scaled, alpha_grid, lambda_grid, nMSE=10, folds=10, best
 
 #======================= LINEAR REGRESSION - ISSUES =======================
 # the best model to analyze
-best_model = bestSubset # or any other (not glmnet model!)
+best_model = lm(Y_AvgTravelledDistance ~ X_Humidity + X_RestTimeFromLastMatch + 
+                  I(X_AvgPlayerValue^3) + I(X_Temperature^2), data=ds,y=T,x=T)
+
 
 # 1) non-linearities & homoschedasticity ----------------------------------
 # analyze residuals
@@ -169,24 +170,44 @@ if(length(outlier_indices) > 0) {
 }
 refitted_best_model = lm.refit(best_model, ds_without_outliers)
 
-lm.inspect(refitted_best_model, 5, 5)
+lm.inspect(refitted_best_model, 10, 10)
 
 #plotres(models$lasso$model, s=models$lasso$bestlambda)
 
-
-
-cubic_model = lm(Y_AvgTravelledDistance ~ X_Humidity + X_RestTimeFromLastMatch + 
-              I(X_AvgPlayerValue^3) + I(X_Temperature^2), data=ds_without_outliers, y=T, x=T)
-
-plot(cubic_model,1)
-lm.inspect(cubic_model, 5, 5)
 
 #======================= CONCLUSION =======================
 
 best_formula = "Y_AvgTravelledDistance ~ X_Humidity + X_RestTimeFromLastMatch + 
                 I(X_AvgPlayerValue^3) + I(X_Temperature^2)"
 
+best_summary = '
+                [1] "================= SUMMARY ================="
+                
+                Call:
+                lm(formula = best_formula, data = ds_without_outliers, x = T, 
+                    y = T)
+                
+                Residuals:
+                     Min       1Q   Median       3Q      Max 
+                -2.36430 -1.06620 -0.04062  0.86571  2.51945 
+                
+                Coefficients:
+                                        Estimate Std. Error t value Pr(>|t|)    
+                (Intercept)              -0.3293     0.8376  -0.393  0.69669    
+                X_Humidity               -5.5659     0.9754  -5.706 2.07e-06 ***
+                X_RestTimeFromLastMatch   2.0298     0.6869   2.955  0.00565 ** 
+                I(X_AvgPlayerValue^3)     2.9249     0.9442   3.098  0.00389 ** 
+                I(X_Temperature^2)       -6.4355     0.8108  -7.938 3.02e-09 ***
+                ---
+                Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+                
+                Residual standard error: 1.344 on 34 degrees of freedom
+                Multiple R-squared:  0.8212,	Adjusted R-squared:  0.8001 
+                F-statistic: 39.03 on 4 and 34 DF,  p-value: 2.925e-12
+                
+                [1] "==================  MSE  =================="
+                [1] 2.05679
+'
 best_model = lm(best_formula, data=ds_without_outliers,y=T,x=T)
 lm.inspect(best_model, 5, 5)
 
-# MSE circa 2.10
