@@ -788,3 +788,11 @@ outlier.plot <- function(fit, showPlot=T, interactive=T) {
 predictWithGlmnet <- function(obj, ...) {
   predict(obj$model, s = obj$bestlambda, ...)
 }
+
+mysqrt = function(x){
+  if(x>=0){
+    return(sqrt(x))
+  }else{
+    return(-sqrt(-x))
+  }
+}
