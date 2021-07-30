@@ -1,5 +1,3 @@
-source('./utils.R')
-
 #==============================   CONFIG     ============================
 
 ABS_PATH = 'C:/Users/gorra/Desktop/new_git/SDAgruppo2'
@@ -10,6 +8,7 @@ PREDICTORS_NUMBER = 10
 #================================ START =================================
 
 setwd(ABS_PATH)
+source('./utils.R')
 ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
 
 
@@ -145,6 +144,8 @@ MSEs = lm.elasticNet(ds_scaled, alpha_grid, lambda_grid, nMSE=10, folds=10, best
 # the best model to analyze
 best_model = bestSubset # or any other (not glmnet model!)
 
+best_model = lm(Y_EmotionalMotivation ~ X_AvgPlayerValue + X_MatchRelevance, data=ds, y=T,x=T)
+
 # 1) non-linearities & homoschedasticity ----------------------------------
 # analyze residuals
 plot(best_model, which=1)
@@ -190,7 +191,32 @@ lm.inspect(refitted_best_model, 5, 5)
 
 best_formula = "Y_EmotionalMotivation ~ X_AvgPlayerValue + X_MatchRelevance"
 
+best_summary = '
+            [1] "================= SUMMARY ================="
+                        
+            Call:
+            lm(formula = formula(model), data = data, x = T, y = T)
+            
+            Residuals:
+                 Min       1Q   Median       3Q      Max 
+            -2.62176 -0.96034 -0.08137  0.53190  2.95914 
+            
+            Coefficients:
+                             Estimate Std. Error t value Pr(>|t|)    
+            (Intercept)        1.5391     1.1919   1.291    0.205    
+            X_AvgPlayerValue   4.9198     0.8729   5.636 2.13e-06 ***
+            X_MatchRelevance  12.2402     2.2936   5.337 5.35e-06 ***
+            ---
+            Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+            
+            Residual standard error: 1.426 on 36 degrees of freedom
+            Multiple R-squared:  0.6457,	Adjusted R-squared:  0.626 
+            F-statistic: 32.81 on 2 and 36 DF,  p-value: 7.733e-09
+            
+            [1] "==================  MSE  =================="
+            [1] 2.385925
+'
+
 best_model = lm(best_formula, data=ds_without_outliers,y=T,x=T)
 lm.inspect(best_model, 5, 5)
 
-# MSE circa 2.3

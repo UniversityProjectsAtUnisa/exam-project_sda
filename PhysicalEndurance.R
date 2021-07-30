@@ -200,32 +200,33 @@ best_formula = "Y_PhysicalEndurance ~ I(X_Temperature^2) + X_Humidity + X_Suppor
                 X_MatchRelevance + map_dbl(X_RestTimeFromLastMatch, mysqrt) * X_MatchRelevance"
 
 best_summary = '
-[1] "================= SUMMARY ================="
+              [1] "================= SUMMARY ================="
+              
+              Call:
+              lm(formula = formula(model), data = data, x = T, y = T)
+              
+              Residuals:
+                  Min      1Q  Median      3Q     Max 
+              -2.9886 -1.0088  0.0878  0.8103  2.7920 
+              
+              Coefficients:
+                                                                        Estimate Std. Error t value Pr(>|t|)    
+              (Intercept)                                                 5.2606     4.6686   1.127  0.26820    
+              I(X_Temperature^2)                                         -5.3580     0.9693  -5.528 4.28e-06 ***
+              X_Humidity                                                 -3.1123     1.1088  -2.807  0.00845 ** 
+              X_SupportersImpact                                          8.6424     2.8534   3.029  0.00483 ** 
+              X_MatchRelevance                                          -19.9788     8.6991  -2.297  0.02833 *  
+              map_dbl(X_RestTimeFromLastMatch, mysqrt)                   -8.1673     5.5290  -1.477  0.14941    
+              X_MatchRelevance:map_dbl(X_RestTimeFromLastMatch, mysqrt)  32.7400    11.3445   2.886  0.00693 ** 
+              ---
+              Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+              
+              Residual standard error: 1.53 on 32 degrees of freedom
+              Multiple R-squared:  0.8265,	Adjusted R-squared:  0.794 
+              F-statistic: 25.41 on 6 and 32 DF,  p-value: 7.221e-11
+              
+              [1] "==================  MSE  =================="
+              [1] 2.82
+              '
 
-Call:
-lm(formula = formula(model), data = data, x = T, y = T)
-
-Residuals:
-    Min      1Q  Median      3Q     Max 
--2.9886 -1.0088  0.0878  0.8103  2.7920 
-
-Coefficients:
-                                                          Estimate Std. Error t value Pr(>|t|)    
-(Intercept)                                                 5.2606     4.6686   1.127  0.26820    
-I(X_Temperature^2)                                         -5.3580     0.9693  -5.528 4.28e-06 ***
-X_Humidity                                                 -3.1123     1.1088  -2.807  0.00845 ** 
-X_SupportersImpact                                          8.6424     2.8534   3.029  0.00483 ** 
-X_MatchRelevance                                          -19.9788     8.6991  -2.297  0.02833 *  
-map_dbl(X_RestTimeFromLastMatch, mysqrt)                   -8.1673     5.5290  -1.477  0.14941    
-X_MatchRelevance:map_dbl(X_RestTimeFromLastMatch, mysqrt)  32.7400    11.3445   2.886  0.00693 ** 
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-
-Residual standard error: 1.53 on 32 degrees of freedom
-Multiple R-squared:  0.8265,	Adjusted R-squared:  0.794 
-F-statistic: 25.41 on 6 and 32 DF,  p-value: 7.221e-11
-
-[1] "==================  MSE  =================="
-[1] 2.82
-'
 best_model = lm(best_formula, data=ds, y = T, x = T)
