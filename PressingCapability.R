@@ -26,73 +26,34 @@ showPlotsAgainstOutput(ds, 2:(PREDICTORS_NUMBER+1))
 
 #======================== TEST RELATIONSHIPS =============================
 
-possibleDependencies = list('X_Temperature', 
-                            'I(X_Temperature^2)',
-                            'X_ClimaticConditions',
-                            'X_RestTimeFromLastMatch',
-                            'X_AvgPlayerValue',
+possibleDependencies = list(
+                            'X_Temperature', 
+                            'I(X_Temperature^2)',       
+                            'X_RestTimeFromLastMatch', 
+                            'I(X_RestTimeFromLastMatch^2)',    
+                            'X_AvgPlayerValue', 
+                            'I(X_AvgPlayerValue^2)',     
+                            'X_MatchRelevance',
+                            'I(X_MatchRelevance^2)',    
                             'X_SupportersImpact',
-                            'I(X_SupportersImpact^2)',            
-                            'X_OpposingSupportersImpact',            
-                            'I(X_OpposingSupportersImpact^2)'            
+                            'I(X_SupportersImpact^2)',  
+                            'X_OpposingSupportersImpact',
+                            'I(X_OpposingSupportersImpact^2)'
                             )
 dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
 lm.inspect(dependencyModel, 5)
-# RSquared: 0.8482, MSE: 2.999463
+# RSquared: 0.8089, MSE: 4.230247
 
 
-possibleDependencies = list('X_Temperature', 
-                            'I(X_Temperature^2)',
-                            'X_RestTimeFromLastMatch',
-                            'X_AvgPlayerValue')
+possibleDependencies = list('X_Temperature',       
+                            'X_RestTimeFromLastMatch', 
+                            'X_AvgPlayerValue',    
+                            'X_MatchRelevance',
+                            'X_SupportersImpact'
+                            )
 dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
 lm.inspect(dependencyModel, 5)
 # RSquared: 0.8249, MSE: 2.381227
-
-
-possibleDependencies = list('I(X_Temperature^2)',
-                            'X_RestTimeFromLastMatch',
-                            'X_AvgPlayerValue')
-dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
-lm.inspect(dependencyModel, 5)
-# RSquared: 0.8242, MSE: 2.251368
-
-
-possibleDependencies = list('I(X_Temperature^2)',
-                            'X_RestTimeFromLastMatch',
-                            'X_AvgPlayerValue',
-                            'I(X_ClimaticConditions^2)')
-dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
-lm.inspect(dependencyModel, 5)
-# RSquared: 0.8452, MSE: 2.169601 # BEST
-
-
-possibleDependencies = list('X_Temperature',  
-                            'I(X_Temperature^2)',
-                            'X_RestTimeFromLastMatch',
-                            'X_AvgPlayerValue',
-                            'I(X_AvgPlayerValue^2)')
-dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
-lm.inspect(dependencyModel, 5)
-# RSquared: 0.8279, MSE: 2.55414
-
-
-possibleDependencies = list('I(X_Temperature^2)',
-                            'X_RestTimeFromLastMatch',
-                            'X_AvgPlayerValue',
-                            'I(X_AvgPlayerValue^2)')
-dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
-lm.inspect(dependencyModel, 5)
-# RSquared: 0.8267, MSE: 2.439745
-
-
-possibleDependencies = list('I(X_Temperature^2)',
-                            'X_RestTimeFromLastMatch',
-                            'I(X_AvgPlayerValue^2)')
-dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
-lm.inspect(dependencyModel, 5)
-# RSquared: 0.8197, MSE: 2.588137
-
 
 #======================== INSPECT INTERACTIONS =============================
 
@@ -107,43 +68,42 @@ interactionMatrix = inspectInteractionMatrix(ds, default=baseRSquared, showHeatm
 
 #========================  TEST INTERACTIONS   =============================
 
-possibleDependencies = list('I(X_Temperature^2)',
-                            'X_RestTimeFromLastMatch',
-                            'X_AvgPlayerValue',
-                            'I(X_ClimaticConditions^2)')
+possibleDependencies = list('X_Temperature',       
+                            'X_RestTimeFromLastMatch', 
+                            'X_AvgPlayerValue',    
+                            'X_MatchRelevance',
+                            'X_SupportersImpact',
+                            'I(X_RestTimeFromLastMatch^2)',
+                            'I(X_OpposingSupportersImpact^2)'
+                            )
 
 
 
-possibleInteractions = list('X_RestTimeFromLastMatch*X_AvgPlayerValue')
+possibleInteractions = list('X_Altitude*X_SupportersImpact')
 dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
 lm.inspect(dependencyModelWithPossibleInteractions, 5)
-# RSquared: 0.8646, MSE: 2.009099 # BEST
 
 
-possibleInteractions = list('X_Temperature*X_Altitude',
-                            'X_RestTimeFromLastMatch*X_AvgPlayerValue')
+possibleInteractions = list('X_Altitude*X_SupportersImpact', 
+                            'X_Altitude*X_Humidity'
+                            )
 dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
 lm.inspect(dependencyModelWithPossibleInteractions, 5)
-# RSquared: 0.8823, MSE: 2.049297
 
 
-possibleInteractions = list('X_Temperature*X_Altitude')
+possibleInteractions = list('X_Altitude*X_Humidity')
 dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
 lm.inspect(dependencyModelWithPossibleInteractions, 5)
-# RSquared: 0.8686, MSE: 2.213753
 
 #====================  BEST SUBSET SELECTION WITH INTERACTIONS   ===============
 
 # add non linearities for best subset selection
 possibleRelationships = list(
-  'I(X_ClimaticConditions^2)',
-  'X_RestTimeFromLastMatch*X_AvgPlayerValue', # IMPORTANTE
-  'X_Temperature*X_ClimaticConditions',
-  'X_Humidity*X_ClimaticConditions',
-  'X_Altitude*X_ClimaticConditions',
-  'X_Altitude*X_Temperature',
-  'X_Altitude*X_AvgPlayerValue',
-  'X_AvgPlayerValue*X_SupportersImpact'
+  'I(X_RestTimeFromLastMatch^2)',
+  'I(X_OpposingSupportersImpact^2)',
+  'X_ClimaticConditions*X_RestTimeFromLastMatch',
+  'X_Altitude*X_SupportersImpact', 
+  'X_Altitude*X_Humidity'
 )    
 
 bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=10, folds=5, verbose=T, method="exhaustive")
@@ -158,14 +118,11 @@ lm.inspect(bestSubset, 10, 10)
 
 # add non linearities for best subset selection
 possibleRelationships = list(
-  'I(X_ClimaticConditions^2)',
-  'X_RestTimeFromLastMatch*X_AvgPlayerValue', # IMPORTANTE
-  'X_Temperature*X_ClimaticConditions',
-  'X_Humidity*X_ClimaticConditions',
-  'X_Altitude*X_ClimaticConditions',
-  'X_Altitude*X_Temperature',
-  'X_Altitude*X_AvgPlayerValue',
-  'X_AvgPlayerValue*X_SupportersImpact'
+  'I(X_RestTimeFromLastMatch^2)',
+  'I(X_OpposingSupportersImpact^2)',
+  'X_ClimaticConditions*X_RestTimeFromLastMatch',
+  'X_Altitude*X_SupportersImpact', 
+  'X_Altitude*X_Humidity'
 )    
 
 N_PREDICTORS_TO_INSPECT = 5
@@ -178,20 +135,29 @@ lm.inspect(bestSubset, 10, 10)
 
 #   BEST MODEL with less coefficients
 # 
-# Estimate Std. Error t value Pr(>|t|)    
-# (Intercept)                      1.1032     1.3973   0.790 0.435270    
-# X_RestTimeFromLastMatch          3.8572     0.6023   6.404 2.58e-07 ***
-#   X_MatchRelevance                11.4692     1.8258   6.282 3.72e-07 ***
-#   X_Temperature                   -5.0280     1.4540  -3.458 0.001482 ** 
-#   X_AvgPlayerValue                 4.5206     1.5966   2.831 0.007731 ** 
-#   X_Temperature:X_AvgPlayerValue   9.1283     2.4448   3.734 0.000689 ***
+#                           Estimate Std. Error t value Pr(>|t|)    
+#   (Intercept)               -2.846      2.356  -1.208 0.235333    
+#   X_Temperature             -4.050      1.083  -3.741 0.000675 ***
+#   X_RestTimeFromLastMatch    4.020      0.832   4.831 2.84e-05 ***
+#   X_AvgPlayerValue           5.127      1.077   4.762 3.49e-05 ***
+#   X_MatchRelevance          10.575      2.537   4.169 0.000199 ***
+#   X_SupportersImpact         8.714      3.044   2.862 0.007149 ** 
 
 
 #=================== FORWARD SELECTION WITH INTERACTIONS =======================
 
 
 possibleRelationships = list(
-  'I(X_ClimaticConditions^2)'
+  "I(X_Temperature^2)",
+  "I(X_Humidity^2)",
+  "I(X_Altitude^2)",
+  "I(X_ClimaticConditions^2)",
+  "I(X_RestTimeFromLastMatch^2)", 
+  "I(X_AvgPlayerValue^2)",
+  "I(X_MatchRelevance^2)",
+  "I(X_AvgGoalConcededLastMatches^2)",
+  "I(X_SupportersImpact^2)",
+  "I(X_OpposingSupportersImpact^2)"  
 )
 bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=10, folds=5, method="forward", nvmax=8, verbose=T)
 bestSubset = bestSubsets$model[[which.min(bestSubsets$MSE)]]
@@ -203,14 +169,11 @@ ds.prettyPlot(bestSubsets$MSE, xlab="Number of predictors", ylab="CV test MSE", 
 
 # Add non linearities before scaling
 bestInteractions = list(
-  'I(X_ClimaticConditions^2)',
-  'X_RestTimeFromLastMatch*X_AvgPlayerValue', # IMPORTANTE
-  'X_Temperature*X_ClimaticConditions',
-  'X_Humidity*X_ClimaticConditions',
-  'X_Altitude*X_ClimaticConditions',
-  'X_Altitude*X_Temperature',
-  'X_Altitude*X_AvgPlayerValue',
-  'X_AvgPlayerValue*X_SupportersImpact'
+  'I(X_RestTimeFromLastMatch^2)',
+  'I(X_OpposingSupportersImpact^2)',
+  'X_ClimaticConditions*X_RestTimeFromLastMatch',
+  'X_Altitude*X_SupportersImpact', 
+  'X_Altitude*X_Humidity'
 )    
 ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
 
@@ -226,14 +189,11 @@ coef(models$ridge$model, s = models$ridge$bestlambda)
 #============================= ELASTIC NET  ===============================
 
 bestInteractions = list(
-  'I(X_ClimaticConditions^2)',
-  'X_RestTimeFromLastMatch*X_AvgPlayerValue', # IMPORTANTE
-  'X_Temperature*X_ClimaticConditions',
-  'X_Humidity*X_ClimaticConditions',
-  'X_Altitude*X_ClimaticConditions',
-  'X_Altitude*X_Temperature',
-  'X_Altitude*X_AvgPlayerValue',
-  'X_AvgPlayerValue*X_SupportersImpact'
+  'I(X_RestTimeFromLastMatch^2)',
+  'I(X_OpposingSupportersImpact^2)',
+  'X_ClimaticConditions*X_RestTimeFromLastMatch',
+  'X_Altitude*X_SupportersImpact', 
+  'X_Altitude*X_Humidity'
 )    
 ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
 
