@@ -75,11 +75,25 @@ def predict_y(df, coefficients):
 
     return y
 
+def expand_df(df, coefficients):
+    coef_names = set()
+    for label, coef_of_label in coefficients.items():
+        for coef_name in coef_of_label:
+            coef_names.add(coef_name)
+    
+    coef_names = coef_names - set(df.columns)
+    # Aggiungi le colonne a df
+
+    return expanded_df
+
+
 
 def main():
     df = read_dataset(ABS_PATH, DATASET_FILENAME)
 
     coefficients = read_regression_coefficients(ABS_PATH)
+
+    df = expand_df(df, coefficients)
 
     y = predict_y(df, coefficients)
 
