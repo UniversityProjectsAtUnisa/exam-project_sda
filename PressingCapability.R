@@ -368,4 +368,4 @@ F-statistic: 15.92 on 7 and 31 DF,  p-value: 1.142e-08
 [1] 3.025554
 '
 best_model = lm(best_formula, data=ds)
-exportCOEF(coef(models$ridge$model, s = models$ridge$bestlambda))
+exportCOEF(coef(models$ridge$model, s = models$ridge$bestlambda), T)

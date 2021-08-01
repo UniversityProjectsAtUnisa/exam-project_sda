@@ -1,4 +1,4 @@
-"","not_GLM","model.coefficents"
+"","is_GLM","model.coefficents"
 "1","(Intercept)","9.24342949088897"
 "2","X_Temperature","-1.02686550785954"
 "3","X_Humidity","-0.731624249402154"
