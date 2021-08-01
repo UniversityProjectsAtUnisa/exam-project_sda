@@ -14,6 +14,30 @@ from itertools import chain, combinations
 from tqdm import tqdm
 from sklearn.model_selection import StratifiedKFold
 from sklearn import metrics
+import cProfile
+import pstats
+import io
+import pickle
+
+
+CLASSIFICATION_MODEL_NAME = "Classification.pickle"
+
+
+def profile(fnc):
+    """A decorator that uses cProfile to profile a function"""
+    def inner(*args, **kwargs):
+        pr = cProfile.Profile()
+        pr.enable()
+        retval = fnc(*args, **kwargs)
+        pr.disable()
+        s = io.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
+        return retval
+
+    return inner
 
 
 class Utils:
@@ -24,7 +48,7 @@ class Utils:
         self.predictors_number = predictors_number
 
     def create_classifier(self):
-        return LogisticRegression(max_iter=1000, penalty='none')
+        return LogisticRegression(max_iter=100000, penalty='none')
 
     def read_dataset(self):
         return pd.read_csv(os.path.join(self.path, self.filename))
@@ -160,10 +184,10 @@ class Utils:
             self._assert_main_effects(formula, num_predictors_in_subset)
             deviance = self.deviance(X_with_interactions, y, model)
             # try:
-                # if formula not in perfect_separation_formulas:
-                    # deviance = self.deviance(df, formula=formula)
-                # else:
-                #     deviance = 0
+            # if formula not in perfect_separation_formulas:
+            # deviance = self.deviance(df, formula=formula)
+            # else:
+            #     deviance = 0
             # except Exception as ex:
             #     print(ex)
             #     print('fromula:', formula)
@@ -181,8 +205,6 @@ class Utils:
                 results['best_models'][num_predictors_in_subset] = {
                     'model': model, 'formula': formula}
                 results['accuracies'][num_predictors_in_subset] = accuracy
-                # results['perfect separation'][num_predictors_in_subset] = (
-                #     formula in perfect_separation_formulas)
                 results['deviances'][num_predictors_in_subset] = deviance
 
         x = np.arange(1, n_predictors+1)
@@ -201,3 +223,6 @@ class Utils:
             if '*' in piece:
                 x, y = piece.split('*')
                 assert((x in pieces) and (y in pieces))
+
+    def save_model(self, model):
+        pickle.dump(model, os.path.join(self.path, CLASSIFICATION_MODEL_NAME))
