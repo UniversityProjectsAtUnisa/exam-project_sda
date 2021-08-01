@@ -20,6 +20,7 @@ library(sjmisc)
 library(ggfortify)
 library(DHARMa)
 library(plotmo)
+library(jsonlite)
 
 #================ Config constants =====================
 
@@ -797,4 +798,11 @@ mysqrt = function(x){
   }else{
     return(-sqrt(-x))
   }
+}
+
+
+
+exportCOEF = function(model) {
+  coefficients = data.frame(model$coefficients)
+  write.csv(coefficients, paste(utils.Y_LABEL, '.csv', sep=""))
 }
