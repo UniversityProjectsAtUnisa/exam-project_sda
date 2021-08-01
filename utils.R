@@ -801,8 +801,21 @@ mysqrt = function(x){
 }
 
 
-
-exportCOEF = function(model) {
-  coefficients = data.frame(model$coefficients)
-  write.csv(coefficients, paste(utils.Y_LABEL, '.csv', sep=""))
+exportCOEF = function(coef, isGLM=F) {
+  dataFrame=NULL
+  if (isGLM){
+    row_names = rownames(coef)
+    mat = cbind(row_names,coef[,1])
+    rownames(mat)=NULL
+    dataFrame = data.frame(mat)
+    colnames(dataFrame) = c('is_GLM', 'model.coefficents')
+  }else{
+    coef=as.matrix(coef)
+    row_names = rownames(coef)
+    mat = cbind(row_names,coef)
+    rownames(mat)=NULL
+    dataFrame = data.frame(mat)
+    colnames(dataFrame) = c('not_GLM', 'model.coefficents')
+  }
+  write.csv(dataFrame, paste(utils.Y_LABEL, '.csv', sep=""))
 }
