@@ -17,6 +17,10 @@ from sklearn import metrics
 import cProfile
 import pstats
 import io
+import pickle
+
+
+CLASSIFICATION_MODEL_NAME = "Classification.pickle"
 
 
 def profile(fnc):
@@ -34,6 +38,7 @@ def profile(fnc):
         return retval
 
     return inner
+
 
 class Utils:
     def __init__(self, path, filename, y_label, predictors_number):
@@ -129,7 +134,6 @@ class Utils:
         s = list(iterable)
         return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
-    @profile
     def best_subset(self, df: pd.DataFrame, possible_interactions, nfolds=5, nCV=5, verbose=True):
         n_predictors = len(possible_interactions) + self.predictors_number
         X, _ = self.getXy(df)
@@ -180,10 +184,10 @@ class Utils:
             self._assert_main_effects(formula, num_predictors_in_subset)
             deviance = self.deviance(X_with_interactions, y, model)
             # try:
-                # if formula not in perfect_separation_formulas:
-                    # deviance = self.deviance(df, formula=formula)
-                # else:
-                #     deviance = 0
+            # if formula not in perfect_separation_formulas:
+            # deviance = self.deviance(df, formula=formula)
+            # else:
+            #     deviance = 0
             # except Exception as ex:
             #     print(ex)
             #     print('fromula:', formula)
@@ -201,8 +205,6 @@ class Utils:
                 results['best_models'][num_predictors_in_subset] = {
                     'model': model, 'formula': formula}
                 results['accuracies'][num_predictors_in_subset] = accuracy
-                # results['perfect separation'][num_predictors_in_subset] = (
-                #     formula in perfect_separation_formulas)
                 results['deviances'][num_predictors_in_subset] = deviance
 
         x = np.arange(1, n_predictors+1)
@@ -221,3 +223,6 @@ class Utils:
             if '*' in piece:
                 x, y = piece.split('*')
                 assert((x in pieces) and (y in pieces))
+
+    def save_model(self, model):
+        pickle.dump(model, os.path.join(self.path, CLASSIFICATION_MODEL_NAME))
