@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
 from utils import CLASSIFICATION_MODEL_NAME
 import pandas as pd
@@ -29,32 +30,42 @@ Y_LABELS = [
 ]
 
 
-def read_regression_coefficients(path):
+def read_regression_models(path):
     """
     Returns:
         {
             "Y_MentalConcentration": {
-                "(Intercept)": value,
-                "X_Temperature": value,
-                ...
+                "coefficients": {
+                    "(Intercept)": value,
+                    "X_Temperature": value,
+                    ...
+                }, 
+                "is_GLM": True
             },
             ...
             "Y_PressingCapability": {
-                "(Intercept)": value,
-                "X_Temperature": value,
-                ...
+                "coefficients": {
+                    "(Intercept)": value,
+                    "X_Temperature": value,
+                    ...
+                }, 
+                "is_GLM": False
             },
         }
     """
-    y_coefficients = defaultdict(dict)
+    models_info = {}
 
     for label in Y_LABELS:
         res = pd.read_csv(os.path.join(path, f'{label}.csv')).to_dict()
-        names = res['Unnamed: 0']
-        coeffs = res['model.coefficients']
-        y_coefficients[label] = {names[i]: coeffs[i] for i in names}
+        if 'is_GLM' in res:
+            is_GLM = True
 
-    return y_coefficients
+        names = res['is_GLM' if is_GLM else 'not_GLM']
+        coeffs = res['model.coefficients']
+        coefficients_info = {names[i]: coeffs[i] for i in names if names[i] != 'is_GLM'}
+        models_info[label] = {'coefficients': coefficients_info, 'is_GLM': is_GLM}
+
+    return models_info
 
 
 def read_classification_model(path, filename):
@@ -70,18 +81,32 @@ def y_to_df(y):
     return pd.DataFrame(
         {ylabel: x.reshape(-1) for ylabel, x in y.items()})
 
+def scale(df):
+    scaled_df = pd.DataFrame()
+    for col in df:
+        scaled_col = preprocessing.StandardScaler().fit_transform(df[col])
+        scaled_df[col] = scaled_col
+    return scaled_df
 
-def predict_y(df, coefficients):
+
+def predict_y(df, models_info):
     y = {}
-    for y_name, coeffs_of_y_name in coefficients.items():
+
+    scaled_df = scale(df)
+
+    for label in models_info:
         model = LinearRegression()
         model.coef_ = np.zeros(len(df.columns))
         for idx, predictor in enumerate(df.columns):
-            model.coef_[idx] = coeffs_of_y_name.get(predictor, 0)
-
+            model.coef_[idx] = models_info[label]['coefficients'].get(predictor, 0)
         model.coef_ = model.coef_.reshape(1, -1)
-        model.intercept_ = np.array([coeffs_of_y_name["(Intercept)"]])
-        y[y_name] = model.predict(df)
+        model.intercept_ = np.array([models_info[label]['coefficients']["(Intercept)"]])
+
+        if(models_info[label]['is_GLM']):
+            y[label] = model.predict(scaled_df)
+        else:
+            y[label] = model.predict(df)
+
     return y
 
 
@@ -117,30 +142,30 @@ def expand_df(df, coef_names):
     # Aggiungi le colonne a df
     expanded_df = pd.DataFrame()
     for name in coef_names:
-        if ('Intercept' in name):
+        if 'Intercept' in name:
             continue
         expanded_df[name] = solve_interaction(df, name)
     return expanded_df
 
 
-def get_coef_names(coefficients):
+def get_coef_names(models_info):
     coef_names = set()
-    for _, coef_of_label in coefficients.items():
-        for coef_name in coef_of_label:
+
+    for label in models_info:
+        for coef_name in models_info[label]['coefficients']:
             coef_names.add(coef_name)
     return coef_names
-
 
 def main():
     print("Reading final dataset")
     df = read_dataset(ABS_PATH, DATASET_FILENAME)
 
     print("Retrievivng coefficients from best models previously trained")
-    coefficients = read_regression_coefficients(ABS_PATH)
+    models_info = read_regression_models(ABS_PATH)
 
     print('Predicting the intermediate results')
-    df = expand_df(df, get_coef_names(coefficients))
-    y = predict_y(df, coefficients)
+    df = expand_df(df, get_coef_names(models_info))
+    y = predict_y(df, models_info)
     y_table = y_to_df(y)
 
     print('Retrieving the best classification model previously trained')

@@ -1,7 +1,0 @@
-"","model.coefficients"
-"(Intercept)",-2.29917920843493
-"X_Temperature",-4.09238692278928
-"I(X_ClimaticConditions^2)",-5.40130061649765
-"X_RestTimeFromLastMatch",8.30472867222857
-"X_AvgPlayerValue",9.61684495805866
-"X_RestTimeFromLastMatch:X_AvgPlayerValue",-5.59971605238973

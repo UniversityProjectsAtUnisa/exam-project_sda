@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 import numpy as np
 from collections import defaultdict
+from sklearn.naive_bayes import GaussianNB
 from statsmodels import formula
 import statsmodels.api as sm
 from itertools import chain, combinations
@@ -41,13 +42,16 @@ def profile(fnc):
 
 
 class Utils:
-    def __init__(self, path, filename, y_label, predictors_number):
+    def __init__(self, path, filename, y_label, predictors_number, gaussian_classifier=False):
         self.path = path
         self.filename = filename
         self.y_label = y_label
         self.predictors_number = predictors_number
+        self.gaussian_classifier = gaussian_classifier
 
     def create_classifier(self):
+        if self.gaussian_classifier:
+            return GaussianNB()
         return LogisticRegression(max_iter=100000, penalty='none')
 
     def read_dataset(self):
@@ -77,7 +81,7 @@ class Utils:
     def inspect_model(self, model, X, y, n=100, k=5):
         total_score = 0
         for i in range(n):
-            kf = StratifiedKFold(n_splits=k, random_state=i, shuffle=True)
+            kf = StratifiedKFold(n_splits=k, random_state=None, shuffle=True)
             scores = cross_validate(model, X, y, cv=kf)
             total_score += np.mean(scores["test_score"])
 
@@ -92,7 +96,9 @@ class Utils:
                 print('\t' * (indent+1) + str(value))
 
     # def deviance(self, df, formula):
-    def deviance(self, X, y, model):
+    def comparison_score(self, X, y, model):
+        if self.gaussian_classifier:
+            return model.score(X, y)
         return 2 * metrics.log_loss(y, model.predict_proba(X), normalize=False)
 
     def generateInteractionValues(self, df, return_names=False, add_squares=False):
@@ -122,12 +128,13 @@ class Utils:
 
             model = self.train_separate_df(X_with_interaction, y)
 
-            d[ylabel][xlabel] = self.deviance(X_with_interaction, y, model)
+            d[ylabel][xlabel] = self.comparison_score(
+                X_with_interaction, y, model)
 
         data = pd.DataFrame(d)
         return sns.heatmap(data.sort_index(axis=0)[sorted(data.columns)],
                            fmt='.5f', annot=True, cmap="YlGnBu",
-                           cbar_kws={'label': 'Deviance'})
+                           cbar_kws={'label': 'Accuracy'if self.gaussian_classifier else 'Deviance'})
 
     def _powerset(self, iterable):
         "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
@@ -149,20 +156,11 @@ class Utils:
         results = {
             'best_models': {},
             'accuracies': {},
-            'deviances': {},
-            # 'perfect separation': {}
+            'comparison_scores': {},
         }
 
         _, y = self.getXy(df)
 
-        # # NOTA: evitare di calcolare le perfect separation formulas
-        # perfect_separation_formulas = {
-        #     'Z_OppositeTeamDefence~Y_Dehydration+Y_PhysicalEndurance+Y_MentalConcentration+Y_Hyperthermia+Y_EmotionalMotivation+Y_AvgTravelledDistance+Y_AvgTravelledDistance*Y_PhysicalEndurance+Y_PressingCapability+Y_EmotionalMotivation*Y_PhysicalEndurance+Y_AvgSpeed',
-        #     'Z_OppositeTeamDefence~Y_Dehydration+Y_PhysicalEndurance+Y_MentalConcentration+Y_Hyperthermia+Y_EmotionalMotivation+Y_AvgTravelledDistance+Y_AvgTravelledDistance*Y_PhysicalEndurance+Y_EmotionalMotivation*Y_PhysicalEndurance+Y_AvgSpeed',
-        #     'Z_OppositeTeamDefence~Y_Dehydration+Y_PhysicalEndurance+Y_MentalConcentration+Y_EmotionalMotivation+Y_AvgTravelledDistance+Y_AvgTravelledDistance*Y_PhysicalEndurance+Y_PressingCapability+Y_EmotionalMotivation*Y_PhysicalEndurance+Y_AvgSpeed'
-        # }
-
-        # NOTA: rispettare il principio gerarchico
         for subset in tqdm(self._powerset(list(range(0, n_predictors))), total=2**n_predictors):
             if (len(subset) == 0):
                 continue
@@ -176,47 +174,37 @@ class Utils:
 
             X_with_interactions = df_interactions[selected_predictors]
             model = self.train_separate_df(X_with_interactions, y)
-            accuracy = self.inspect_model(
-                model, X_with_interactions, y, n=nCV, k=nfolds)
             formula = self.y_label + '~' + '+'.join(selected_predictors)
             num_predictors_in_subset = len(selected_predictors)
 
             self._assert_main_effects(formula, num_predictors_in_subset)
-            deviance = self.deviance(X_with_interactions, y, model)
-            # try:
-            # if formula not in perfect_separation_formulas:
-            # deviance = self.deviance(df, formula=formula)
-            # else:
-            #     deviance = 0
-            # except Exception as ex:
-            #     print(ex)
-            #     print('fromula:', formula)
-            #     if ('Perfect separation detected, results not available' in str(ex)):
-            #         perfect_separation_formulas.add(formula)
-            #     else:
-            #         exit(0)
-            # print('formula in current iteration:',
-            #   (self.y_label + '~' + '+'.join(selected_predictors)))
+            comparison_score = self.comparison_score(X_with_interactions, y, model)
 
-            #print('num predictors =', num_predictors_in_subset)
-
-            if (num_predictors_in_subset not in results['deviances'] or
-                    results['deviances'][num_predictors_in_subset] < deviance):  # NOTA: da cambiare con la devianza
+            if (num_predictors_in_subset not in results['comparison_scores'] or
+                    results['comparison_scores'][num_predictors_in_subset] < comparison_score):
                 results['best_models'][num_predictors_in_subset] = {
-                    'model': model, 'formula': formula}
-                results['accuracies'][num_predictors_in_subset] = accuracy
-                results['deviances'][num_predictors_in_subset] = deviance
+                    'model': model, 'formula': formula, 'X': X_with_interactions, 'y': y}
+                results['comparison_scores'][num_predictors_in_subset] = comparison_score
 
-        # return results, perfect_separation_formulas
+        for predictors_number in results['best_models'].keys():
+            model_info = results['best_models'][predictors_number]
+            accuracy = self.inspect_model(
+                model_info['model'], model_info['X'], model_info['y'], k=nfolds, n=nCV)
+            results['accuracies'][predictors_number] = accuracy
+
         return results
 
-    def plot_best_subsets(best_subsets, n_predictors):
+    @classmethod
+    def plot_best_subsets(cls, best_subsets, n_predictors, ax, color=None, legend=None):
         x = np.arange(1, n_predictors+1)
-        plt.plot(x, [best_subsets['accuracies'][i] for i in x], 'o--', c='orange')
-        plt.title('Best accuracies vs predictors')
-        plt.grid()
-        plt.xlabel('Number of predictors')
-        plt.ylabel('Accuracy')
+        ax.plot(x, [best_subsets['accuracies'][i]
+                 for i in x], 'o--', c=color if color is not None else 'orange', label = legend)
+        if legend:
+            ax.legend()
+        ax.set_title('Best accuracies vs predictors')
+        ax.grid(b=True,which='major')
+        ax.set_xlabel('Number of predictors')
+        ax.set_ylabel('Accuracy')
 
     def _assert_main_effects(self, formula, num_predictors_in_subset):
         # print('assert:',formula)

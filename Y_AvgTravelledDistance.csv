@@ -1,6 +1,0 @@
-"","model.coefficients"
-"(Intercept)",-1.12609896352049
-"X_Humidity",-5.31886717949659
-"X_RestTimeFromLastMatch",2.57586616597139
-"I(X_AvgPlayerValue^3)",3.38214680765996
-"I(X_Temperature^2)",-5.27660045273497

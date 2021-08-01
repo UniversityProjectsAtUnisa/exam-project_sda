@@ -1,8 +1,0 @@
-"","model.coefficients"
-"(Intercept)",3.45502806480728
-"I(X_Temperature^2)",-5.1084108996832
-"X_Humidity",-3.10586630868432
-"X_SupportersImpact",8.40727440589053
-"X_MatchRelevance",-15.9069140167668
-"map_dbl(X_RestTimeFromLastMatch, mysqrt)",-5.86742512301602
-"X_MatchRelevance:map_dbl(X_RestTimeFromLastMatch, mysqrt)",27.6192635779329

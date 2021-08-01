@@ -31,17 +31,16 @@ X, y = utils_.getXy(df)
 
 from importlib import reload
 reload(utils)
-utils_ = utils.Utils(ABS_PATH, DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+utils_ = UtilsBayes(ABS_PATH, DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
 df = utils_.read_dataset()
 
-possible_interactions =  (
-    ('Y_AvgTravelledDistance', 'Y_PhysicalEndurance'),
+possible_interactions =  set((
     ('Y_EmotionalMotivation',  'Y_PhysicalEndurance'),
     ('Y_Hyperthermia',         'Y_PhysicalEndurance'),
     ('Y_AvgTravelledDistance', 'Y_PhysicalEndurance'),
     ('Y_MentalConcentration',  'Y_Dehydration'),
-)
-subsets = utils_.best_subset(df, possible_interactions, nfolds = 5, nCV = 5, verbose=True)
+))
+subsets = utils_.best_subset(df.head(15), possible_interactions, nfolds = 2, nCV = 1, verbose=True)
 
 # interaction_column = X['Y_AvgTravelledDistance'] * X['Y_MentalConcentration']
 # XCattiva = pd.concat([X, interaction_column.to_frame()], axis=1)

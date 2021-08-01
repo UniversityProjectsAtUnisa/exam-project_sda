@@ -1,9 +1,0 @@
-"","model.coefficients"
-"(Intercept)",7.77845642683091
-"X_Temperature",-3.58651006308951
-"X_RestTimeFromLastMatch",4.22487726606674
-"X_AvgPlayerValue",5.92850907054866
-"X_MatchRelevance",6.60443130664577
-"X_Altitude",-19.8982375133386
-"X_SupportersImpact",-9.38661910155817
-"X_Altitude:X_SupportersImpact",37.0297767522835
