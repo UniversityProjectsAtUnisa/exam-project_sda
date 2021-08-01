@@ -207,14 +207,16 @@ class Utils:
                 results['accuracies'][num_predictors_in_subset] = accuracy
                 results['deviances'][num_predictors_in_subset] = deviance
 
+        # return results, perfect_separation_formulas
+        return results
+
+    def plot_best_subsets(best_subsets, n_predictors):
         x = np.arange(1, n_predictors+1)
-        plt.plot(x, [results['accuracies'][i] for i in x], 'o--', c='orange')
+        plt.plot(x, [best_subsets['accuracies'][i] for i in x], 'o--', c='orange')
         plt.title('Best accuracies vs predictors')
         plt.grid()
         plt.xlabel('Number of predictors')
         plt.ylabel('Accuracy')
-        # return results, perfect_separation_formulas
-        return results
 
     def _assert_main_effects(self, formula, num_predictors_in_subset):
         # print('assert:',formula)
