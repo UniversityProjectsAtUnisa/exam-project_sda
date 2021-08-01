@@ -3,10 +3,11 @@ import pandas as pd
 import os
 from collections import defaultdict
 import pickle
+import re
 
 
 ABS_PATH = r"C:\Users\carbo\OneDrive\Documenti\Magistrale Carbone\2 sem\Statistical Data Analysis\aPROGETTO\SDAgruppo2"
-ABS_PATH = '/mnt/c/Users/marco/Documents/UNISA/SDA/progetto/SDAgruppo2'
+ABS_PATH = r'C:\Users\gorra\Desktop\gitSDA\SDAgruppo2'
 DATASET_FILENAME = 'FINAL.csv'
 X_LABELS = []
 PREDICTORS_NUMBER = 10
@@ -24,10 +25,6 @@ Y_LABELS = [
     "Y_EmotionalMotivation",
 ]
 
-Y_LABELS = [
-    "Y_PressingCapability",
-]
-
 
 def read_regression_coefficients(path):
     Y_COEFFICIENTS = defaultdict(dict)
@@ -37,13 +34,13 @@ def read_regression_coefficients(path):
         names = res['Unnamed: 0']
         coeffs = res['model.coefficients']
         Y_COEFFICIENTS[label] = {names[i]: coeffs[i] for i in names}
-        print(Y_COEFFICIENTS[label])
 
     return Y_COEFFICIENTS
 
 
 def read_classification_model(path, filename):
-    return pickle.load(os.path.join(path, filename))
+    with open(os.path.join(path, filename),'rb') as f:
+        return pickle.load(f)
 
 
 def read_dataset(path, filename):
@@ -67,23 +64,51 @@ def calculate_y(row, coefficients):
 def y_to_df(y):
     return pd.DataFrame(y)
 
+
 def predict_y(df, coefficients):
-    y = [] # LIST OF DICTIONARIES
+    y = []  # LIST OF DICTIONARIES
     for _, row in df.iterrows():
         y_row = calculate_y(row, coefficients)
         y.append(y_row)
 
     return y
 
-def expand_df(df, coefficients):
-    coef_names = set()
-    for label, coef_of_label in coefficients.items():
-        for coef_name in coef_of_label:
-            coef_names.add(coef_name)
-    
-    coef_names = coef_names - set(df.columns)
-    # Aggiungi le colonne a df
 
+def mysqrt(x):
+    if(x >= 0):
+        return((x)**0.5)
+    else:
+        return -((-x)**0.5)
+
+
+def solve_interaction(df, name):
+    if ":" in name:
+        predictor1, predictor2 = name.split(':')[0], name.split(':')[1]
+        return solve_interaction(df,predictor1)*solve_interaction(df,predictor2)
+    m = re.search('.*I\\((.*)\\^(\\d+)\\)', name)
+    if m is not None:
+        predictor = m.group(1)
+        power = m.group(2)
+        squared = (df[predictor])**float(power)
+        return squared
+
+    elif "map_dbl" in name:
+        print('mapdbl,',name)
+        between = name[name.index('(')+1: name.index(')')]
+        predictor, funct = between.split(',')
+        predictor = predictor.strip()
+        funct = funct.strip()
+        newcolumn = df[predictor].apply(eval(funct))
+        return newcolumn
+    return df[name]
+
+def expand_df(df, coef_names):
+    # Aggiungi le colonne a df
+    expanded_df = pd.DataFrame()
+    for name in coef_names:
+        if ('Intercept' in name) : continue
+        print(name)
+        expanded_df[name] = solve_interaction(df, name)
     return expanded_df
 
 
@@ -93,20 +118,33 @@ def main():
 
     coefficients = read_regression_coefficients(ABS_PATH)
 
-    df = expand_df(df, coefficients)
+
+    coef_names = set()
+    for _, coef_of_label in coefficients.items():
+        for coef_name in coef_of_label:
+            coef_names.add(coef_name)
+
+    df = expand_df(df, coef_names)
 
     y = predict_y(df, coefficients)
 
     y_table = y_to_df(y)
 
     model = read_classification_model(ABS_PATH, CLASSIFICATION_MODEL_NAME)
+    
+    formula = model['formula']
+    coef_names = list(formula.split('~')[1].split('+'))   
 
-    z = model.predict(y_table)
+    y_table_expanded = expand_df(y_table, coef_names)
+    print("coef_names",coef_names)
+    print(y_table_expanded)
 
-    # z = z.to_data_frame()
+    z = model['model'].predict(y_table_expanded[coef_names])
+    print(z)
+    exit(0)
 
     print(z)
-    z.to_csv(os.path.join(ABS_PATH, OUTPUT_FILE))
+    pd.DataFrame({'Class':z}).to_csv(os.path.join(ABS_PATH, OUTPUT_FILE))
 
 
 if __name__ == "__main__":

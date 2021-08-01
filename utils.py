@@ -225,4 +225,5 @@ class Utils:
                 assert((x in pieces) and (y in pieces))
 
     def save_model(self, model):
-        pickle.dump(model, os.path.join(self.path, CLASSIFICATION_MODEL_NAME))
+        with open(os.path.join(self.path, CLASSIFICATION_MODEL_NAME), 'wb') as f:
+            pickle.dump(model, f)
