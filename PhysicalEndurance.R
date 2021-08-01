@@ -230,3 +230,4 @@ best_summary = '
               '
 
 best_model = lm(best_formula, data=ds, y = T, x = T)
+exportCOEF(best_model$coefficients)

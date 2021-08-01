@@ -1,0 +1,7 @@
+"","not_GLM","model.coefficents"
+"1","(Intercept)","3.60603477467818"
+"2","X_RestTimeFromLastMatch","3.8163478148715"
+"3","I(X_MatchRelevance^2)","11.9881341926907"
+"4","X_Temperature","-4.75099301273459"
+"5","X_AvgPlayerValue","4.81778513523651"
+"6","X_Temperature:X_AvgPlayerValue","8.45516970358856"

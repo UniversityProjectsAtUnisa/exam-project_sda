@@ -272,3 +272,5 @@ best_summary = '
 '
 best_model = lm(best_formula, data=ds, y=T, x=T)
 lm.inspect(best_model, 10, 10)
+
+exportCOEF(best_model$coefficients)

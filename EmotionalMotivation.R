@@ -220,3 +220,4 @@ best_summary = '
 best_model = lm(best_formula, data=ds_without_outliers,y=T,x=T)
 lm.inspect(best_model, 5, 5)
 
+exportCOEF(best_model$coefficients)

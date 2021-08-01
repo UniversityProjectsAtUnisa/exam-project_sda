@@ -1,0 +1,6 @@
+"","not_GLM","model.coefficents"
+"1","(Intercept)","-1.12609896352049"
+"2","X_Humidity","-5.31886717949659"
+"3","X_RestTimeFromLastMatch","2.57586616597139"
+"4","I(X_AvgPlayerValue^3)","3.38214680765996"
+"5","I(X_Temperature^2)","-5.27660045273497"

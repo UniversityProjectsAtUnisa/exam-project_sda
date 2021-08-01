@@ -334,7 +334,7 @@ lm.inspect(best_model, 10, 10)
 
 #======================= CONCLUSION =======================
 
-best_formula = "Y_MentalConcentration ~ X_Temperature + X_RestTimeFromLastMatch + 
+best_formula = "Y_PressingCapability ~ X_Temperature + X_RestTimeFromLastMatch + 
     X_AvgPlayerValue + X_MatchRelevance + X_Altitude + X_SupportersImpact + 
     X_Altitude * X_SupportersImpact"
 best_summary = '
@@ -368,3 +368,4 @@ F-statistic: 15.92 on 7 and 31 DF,  p-value: 1.142e-08
 [1] 3.025554
 '
 best_model = lm(best_formula, data=ds)
+exportCOEF(coef(models$ridge$model, s = models$ridge$bestlambda))

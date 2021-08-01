@@ -325,3 +325,4 @@ F-statistic: 32.21 on 5 and 33 DF,  p-value: 8.74e-12
 [1] 2.043521
 '
 best_model = lm(best_formula, data=ds)
+exportCOEF(best_model$coefficients)
