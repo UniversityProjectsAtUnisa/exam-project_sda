@@ -21,6 +21,7 @@ library(ggfortify)
 library(DHARMa)
 library(plotmo)
 library(jsonlite)
+library(matrixStats)
 
 #================ Config constants =====================
 

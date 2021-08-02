@@ -302,7 +302,7 @@ best_model = bestSubset # or any other (not glmnet model!)
 # 1) non-linearities & homoschedasticity ----------------------------------
 # analyze residuals
 plot(best_model, which=1)
-# La linea rossa non è dritta quindi c'è della non linearità che non è stata spiegata
+# La linea rossa non ï¿½ dritta quindi c'ï¿½ della non linearitï¿½ che non ï¿½ stata spiegata
 
 # 2) high leverage points -------------------------------------------------
 # # compute and plot hat values
@@ -369,3 +369,33 @@ F-statistic: 15.92 on 7 and 31 DF,  p-value: 1.142e-08
 '
 best_model = lm(best_formula, data=ds)
 exportCOEF(coef(models$ridge$model, s = models$ridge$bestlambda), T)
+
+# ds_pre_scale = addNonLinearities(ds, bestInteractions)
+
+# retval = scale(ds_pre_scale)
+# ds_scaled
+# finalds = read.csv("FINAL.csv")
+# finalds = addNonLinearities(finalds, bestInteractions)
+
+# ds_pre_scale = (ds_pre_scale-medie)/variances
+# var(ds_pre_scale['X_Temperature'])
+
+# finalds = (finalds-medie)/variances
+
+# ds_pre_scale = addNonLinearities(ds, bestInteractions)
+
+# medie = colMeans(ds_pre_scale)
+# sds = colSds(as.matrix(ds_pre_scale))
+
+# ds.scale = function(ds) {
+#   # Assumes the only dependent variable is 
+#   # in the first column
+#   return(scale(ds[1:length(ds)]))
+# }
+
+# predict(models$ridge$model, s=models$ridge$bestlambda, newx=as.matrix(as.data.frame(new)), type="response")
+
+# new = (finalds[1] - medie[2])/sds[2]
+# for (i in 2:ncol(finalds)) {
+#     new = cbind(new, (finalds[i] - medie[i+1])/sds[i+1])
+# }
