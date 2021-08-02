@@ -809,14 +809,14 @@ exportCOEF = function(coef, isGLM=F) {
     mat = cbind(row_names,coef[,1])
     rownames(mat)=NULL
     dataFrame = data.frame(mat)
-    colnames(dataFrame) = c('is_GLM', 'model.coefficents')
+    colnames(dataFrame) = c('is_GLM', 'model.coefficients')
   }else{
     coef=as.matrix(coef)
     row_names = rownames(coef)
     mat = cbind(row_names,coef)
     rownames(mat)=NULL
     dataFrame = data.frame(mat)
-    colnames(dataFrame) = c('not_GLM', 'model.coefficents')
+    colnames(dataFrame) = c('not_GLM', 'model.coefficients')
   }
   write.csv(dataFrame, paste(utils.Y_LABEL, '.csv', sep=""))
 }
