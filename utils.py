@@ -21,7 +21,7 @@ import io
 import pickle
 
 
-CLASSIFICATION_MODEL_NAME = "Classification.pickle"
+CLASSIFICATION_MODEL_NAME = "Classification"
 
 
 def profile(fnc):
@@ -100,6 +100,11 @@ class Utils:
         if self.gaussian_classifier:
             return model.score(X, y)
         return 2 * metrics.log_loss(y, model.predict_proba(X), normalize=False)
+
+    def isBetter(self, comparison_score1, comparison_score2):
+        if self.gaussian_classifier:
+            return comparison_score1 > comparison_score2
+        return comparison_score1 < comparison_score2
 
     def generateInteractionValues(self, df, return_names=False, add_squares=False):
         X, _ = self.getXy(df)
@@ -181,7 +186,7 @@ class Utils:
             comparison_score = self.comparison_score(X_with_interactions, y, model)
 
             if (num_predictors_in_subset not in results['comparison_scores'] or
-                    results['comparison_scores'][num_predictors_in_subset] < comparison_score):
+                    self.isBetter(comparison_score, results['comparison_scores'][num_predictors_in_subset])):
                 results['best_models'][num_predictors_in_subset] = {
                     'model': model, 'formula': formula, 'X': X_with_interactions, 'y': y}
                 results['comparison_scores'][num_predictors_in_subset] = comparison_score
@@ -214,6 +219,6 @@ class Utils:
                 x, y = piece.split('*')
                 assert((x in pieces) and (y in pieces))
 
-    def save_model(self, model):
-        with open(os.path.join(self.path, CLASSIFICATION_MODEL_NAME), 'wb') as f:
+    def save_model(self, model, suffix=""):
+        with open(os.path.join(self.path, CLASSIFICATION_MODEL_NAME+suffix+'.pickle'), 'wb') as f:
             pickle.dump(model, f)
