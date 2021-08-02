@@ -103,7 +103,8 @@ bestInteractions = list(
   'I(X_AvgPlayerValue^3)'
 )    
 
-ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+ds_scaled = addNonLinearities(ds, bestInteractions)
 
 lambda_grid = 10^seq(4, -6, length = 2000)
 
@@ -124,7 +125,8 @@ bestInteractions = list(
   'I(X_AvgPlayerValue^3)'
 )     
 
-ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+ds_scaled = addNonLinearities(ds, bestInteractions)
 
 lambda_grid = 10^seq(4, -6, length = 500)
 alpha_grid = seq(0,1,length = 100)
@@ -143,7 +145,7 @@ best_model = lm(Y_AvgTravelledDistance ~ X_Humidity + X_RestTimeFromLastMatch +
 # 1) non-linearities & homoschedasticity ----------------------------------
 # analyze residuals
 plot(best_model, which=1)
-# La linea rossa non è dritta quindi c'è della non linearità che non è stata spiegata
+# La linea rossa non ï¿½ dritta quindi c'ï¿½ della non linearitï¿½ che non ï¿½ stata spiegata
 
 # 2) high leverage points -------------------------------------------------
 # # compute hat values
@@ -151,7 +153,7 @@ plot(best_model, which=1)
 # #check wether any of them is much greater than the mean (p+1)/n
 # num_points = dim(ds)[1]
 # ds.prettyPlot(hats/(NUM+1)*num_points, xlabel, ylabel, title)
-# # non c'è nessun valore >>(p+1)/n
+# # non c'ï¿½ nessun valore >>(p+1)/n
 
 hat.plot(best_model)
 

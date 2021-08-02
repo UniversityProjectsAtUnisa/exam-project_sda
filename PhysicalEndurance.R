@@ -79,7 +79,7 @@ possibleInteractions = list('map_dbl(X_RestTimeFromLastMatch,mysqrt)*X_MatchRele
 dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
 lm.inspect(dependencyModelWithPossibleInteractions, 10, 10)
 # RSquared: 0.8453, MSE: 2.854117 # BEST
-# Abbiamo inserito il quadrato della temperatura perchè migliora i residui
+# Abbiamo inserito il quadrato della temperatura perchï¿½ migliora i residui
 
 
 #====================  BEST SUBSET SELECTION WITH INTERACTIONS   ===============
@@ -124,7 +124,9 @@ bestInteractions = list(
   'I(X_Temperature^2)',
   'X_MatchRelevance*X_AvgGoalConcededLastMatches'
 )    
-ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
+
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+ds_scaled = addNonLinearities(ds, bestInteractions)
 
 lambda_grid = 10^seq(4, -6, length = 10000)
 
@@ -142,7 +144,9 @@ bestInteractions = list(
   'X_MatchRelevance*X_AvgGoalConcededLastMatches'
 )  
 
-ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
+
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+ds_scaled = addNonLinearities(ds, bestInteractions)
 
 lambda_grid = 10^seq(4, -6, length = 200)
 alpha_grid = seq(0,1,length = 100)
@@ -165,7 +169,7 @@ best_model = lm.byFormulaChunks(ds, list('I(X_Temperature^2)',
 # 1) non-linearities & homoschedasticity ----------------------------------
 # analyze residuals
 plot(best_model, which=1)
-# La linea rossa non è dritta quindi c'è della non linearità che non è stata spiegata
+# La linea rossa non ï¿½ dritta quindi c'ï¿½ della non linearitï¿½ che non ï¿½ stata spiegata
 
 # 2) high leverage points -------------------------------------------------
 # # compute and plot hat values

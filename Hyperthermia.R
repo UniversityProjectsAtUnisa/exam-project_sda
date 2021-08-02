@@ -56,7 +56,7 @@ showPlotsAgainstOutput(ds, 2:(PREDICTORS_NUMBER+1))
 #======================== TEST RELATIONSHIPS =============================
 
 
-# L'ANDAMENTO DEI RESIDUI DIMOSTRA CHE NON SONO PRESENTI NON LINEARITÀ
+# L'ANDAMENTO DEI RESIDUI DIMOSTRA CHE NON SONO PRESENTI NON LINEARITï¿½
 
 
 #======================== INSPECT INTERACTIONS =============================
@@ -174,7 +174,8 @@ bestInteractions = list(
   'X_AvgPlayerValue*X_AvgGoalConcededLastMatches'
 )  
 
-ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+ds_scaled = addNonLinearities(ds, bestInteractions)
 
 lambda_grid = 10^seq(4, -6, length = 10000)
 
@@ -195,7 +196,8 @@ bestInteractions = list(
   'X_AvgPlayerValue*X_AvgGoalConcededLastMatches'
 )  
 
-ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+ds_scaled = addNonLinearities(ds, bestInteractions)
 
 lambda_grid = 10^seq(4, -6, length = 200)
 alpha_grid = seq(0,1,length = 100)
@@ -218,7 +220,7 @@ best_model = lm.byFormulaChunks(ds, list(
 # 1) non-linearities & homoschedasticity ----------------------------------
 # analyze residuals
 plot(best_model, which=1)
-# La linea rossa è dritta quindi non c'è della non linearità
+# La linea rossa ï¿½ dritta quindi non c'ï¿½ della non linearitï¿½
 
 # 2) high leverage points -------------------------------------------------
 # # compute and plot hat values

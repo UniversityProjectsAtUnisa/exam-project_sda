@@ -165,7 +165,8 @@ bestInteractions = list(
   'X_Altitude*X_AvgPlayerValue',
   'X_AvgPlayerValue*X_SupportersImpact'
 )    
-ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+ds_scaled = addNonLinearities(ds, bestInteractions)
 
 lambda_grid = 10^seq(4, -6, length = 10000)
 
@@ -188,7 +189,8 @@ bestInteractions = list(
   'X_Altitude*X_AvgPlayerValue',
   'X_AvgPlayerValue*X_SupportersImpact'
 )    
-ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+ds_scaled = addNonLinearities(ds, bestInteractions)
 
 lambda_grid = 10^seq(4, -6, length = 2000)
 alpha_grid = seq(0,1,length = 100)
@@ -215,7 +217,7 @@ best_model = bestSubset # or any other (not glmnet model!)
 # 1) non-linearities & homoschedasticity ----------------------------------
 # analyze residuals
 plot(best_model, which=1)
-# La linea rossa non è dritta quindi c'è della non linearità che non è stata spiegata
+# La linea rossa non ï¿½ dritta quindi c'ï¿½ della non linearitï¿½ che non ï¿½ stata spiegata
 
 # 2) high leverage points -------------------------------------------------
 # # compute and plot hat values

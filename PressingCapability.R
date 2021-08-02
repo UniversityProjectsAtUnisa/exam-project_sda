@@ -232,8 +232,10 @@ bestInteractions = list(
   'X_Altitude*X_SupportersImpact', 
   'X_Altitude*X_AvgPlayerValue', 
   'X_Altitude*X_Humidity'
-)    
-ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
+)   
+
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER) 
+ds_scaled = addNonLinearities(ds, bestInteractions)
 
 lambda_grid = 10^seq(4, -6, length = 10000)
 
@@ -273,7 +275,9 @@ bestInteractions = list(
   'X_Altitude*X_AvgPlayerValue', 
   'X_Altitude*X_Humidity'
 )    
-ds_scaled = ds.scale(addNonLinearities(ds, bestInteractions))
+
+ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
+ds_scaled = addNonLinearities(ds, bestInteractions)
 
 lambda_grid = 10^seq(4, -6, length = 2000)
 alpha_grid = seq(0,1,length = 100)
