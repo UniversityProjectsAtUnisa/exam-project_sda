@@ -1,0 +1,8 @@
+"","not_GLM","model.coefficients"
+"1","(Intercept)","0.296226139833898"
+"2","X_Temperature","7.90052517854245"
+"3","X_Humidity","6.08654008246392"
+"4","X_Altitude","-1.07075431932113"
+"5","X_ClimaticConditions","-2.14213587617179"
+"6","X_MatchRelevance","0.994527003656404"
+"7","I(X_AvgPlayerValue^2)","-0.584465676217052"

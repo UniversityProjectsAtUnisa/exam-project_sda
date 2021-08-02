@@ -1,0 +1,7 @@
+"","not_GLM","model.coefficients"
+"1","(Intercept)","-0.233401995026807"
+"2","X_Temperature","5.95155873752866"
+"3","X_Humidity","3.14059162885265"
+"4","X_ClimaticConditions","-3.17659846372724"
+"5","X_Altitude","2.14660057704733"
+"6","X_MatchRelevance","0.965965098217267"

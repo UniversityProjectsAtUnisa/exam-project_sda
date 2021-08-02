@@ -4,8 +4,11 @@
 
 2) Navigare da linea di comando all'interno della cartella
 
+    1) (Opzionale) Installare dipendenze mancanti con 
+    `pip install -r requirements.txt`
+
 3) Eseguire lo script con
 
-    <code>python predict.py</code>
+    `python predict.py`
 
 4) Visionare l'output nel file `output.csv`

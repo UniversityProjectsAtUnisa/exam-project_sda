@@ -58,7 +58,7 @@ def read_regression_models(path):
         is_GLM = 'is_GLM' in res
 
         names = res['is_GLM' if is_GLM else 'not_GLM']
-        coeffs = res['model.coefficents']
+        coeffs = res['model.coefficients']
         coefficients_info = {(names[i]).replace('*', ":"): coeffs[i]
                              for i in names if names[i] != 'is_GLM'}
         models_info[label] = {
@@ -150,7 +150,7 @@ def main():
     print("Reading final dataset")
     df = read_dataset(RELATIVE_PATH, DATASET_FILENAME)
 
-    print("Retrievivng coefficients from best models previously trained")
+    print("Retrieving coefficients from best models previously trained")
     models_info = read_regression_models(RELATIVE_PATH)
 
     print('Predicting the intermediate results')

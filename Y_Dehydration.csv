@@ -1,8 +1,0 @@
-"","not_GLM","model.coefficents"
-"1","(Intercept)","21.2880992721832"
-"2","X_Temperature","5.88778780068074"
-"3","X_Humidity","1.75949152218408"
-"4","X_SupportersImpact","-42.0205979700031"
-"5","I(X_Altitude^2)","2.93563943064468"
-"6","X_OpposingSupportersImpact","-42.1431784260385"
-"7","X_SupportersImpact:X_OpposingSupportersImpact","82.1127177366648"
