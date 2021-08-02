@@ -98,7 +98,7 @@ def scale(df, coef_names):
 def predict_y(df, models_info, coef_names):
     y = {}
 
-    scaled_df = scale(df, coef_names)
+    scaled_df = df
 
     for label in models_info:
         model = LinearRegression()
