@@ -81,7 +81,7 @@ class Utils:
     def inspect_model(self, model, X, y, n=100, k=5):
         total_score = 0
         for i in range(n):
-            kf = StratifiedKFold(n_splits=k, random_state=None, shuffle=True)
+            kf = StratifiedKFold(n_splits=k, random_state=i, shuffle=True)
             scores = cross_validate(model, X, y, cv=kf)
             total_score += np.mean(scores["test_score"])
 
