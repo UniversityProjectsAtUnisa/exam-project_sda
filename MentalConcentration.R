@@ -1,7 +1,7 @@
 #==============================   CONFIG     ============================
 
 ABS_PATH = 'C:/Users/marco/Documents/UNISA/SDA/progetto/SDAgruppo2'
-DATASET_FILENAME = 'RegressionData_SDA_AH_group2.csv'
+DATASET_FILENAME = 'RegressionData_final.csv'
 Y_LABEL = 'Y_MentalConcentration'
 PREDICTORS_NUMBER = 10
 
@@ -17,6 +17,37 @@ ds = ds.init(DATASET_FILENAME, Y_LABEL, PREDICTORS_NUMBER)
 baseModel=lm.byIndices(ds, -1)
 lm.inspect(baseModel, 5)
 
+# [1] "================= SUMMARY ================="
+# 
+# Call:
+#   lm(formula = f, data = data, x = T, y = T)
+# 
+# Residuals:
+#   Min      1Q  Median      3Q     Max 
+# -3.2492 -1.1122 -0.0628  1.1345  3.4662 
+# 
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)                   0.01526    0.16036   0.095    0.924    
+# X_Temperature                 0.24103    0.15729   1.532    0.129    
+# X_Humidity                    0.08627    0.18546   0.465    0.643    
+# X_Altitude                   -0.01143    0.15908  -0.072    0.943    
+# X_ClimaticConditions          0.06228    0.14927   0.417    0.678    
+# X_RestTimeFromLastMatch       2.92208    0.16733  17.463   <2e-16 ***
+#   X_AvgPlayerValue              9.01419    0.16119  55.922   <2e-16 ***
+#   X_MatchRelevance              5.98036    0.15039  39.766   <2e-16 ***
+#   X_AvgGoalConcededLastMatches  4.32008    0.17110  25.249   <2e-16 ***
+#   X_SupportersImpact            1.87229    0.15239  12.286   <2e-16 ***
+#   X_OpposingSupportersImpact   -2.98374    0.16246 -18.366   <2e-16 ***
+#   ---
+#   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+# 
+# Residual standard error: 1.542 on 89 degrees of freedom
+# Multiple R-squared:  0.9896,	Adjusted R-squared:  0.9885 
+# F-statistic: 850.1 on 10 and 89 DF,  p-value: < 2.2e-16
+# 
+# [1] "==================  MSE  =================="
+# [1] 2.827302
 
 #====================== INSPECT RELATIONSHIPS ============================
 
@@ -26,54 +57,18 @@ showPlotsAgainstOutput(ds, 2:(PREDICTORS_NUMBER+1))
 
 #======================== TEST RELATIONSHIPS =============================
 
-possibleDependencies = list('X_RestTimeFromLastMatch', 
-                            'X_AvgPlayerValue',
-                            'X_MatchRelevance')
+possibleDependencies = list(
+                            "X_RestTimeFromLastMatch",
+                            "X_AvgPlayerValue",
+                            "X_MatchRelevance",
+                            "X_AvgGoalConcededLastMatches",
+                            "X_SupportersImpact",
+                            "X_OpposingSupportersImpact"
+                            )
 dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
 lm.inspect(dependencyModel, 5)
-# RSquared: 0.8299, MSE: 2.191373
+# RSquared: 0.9893, MSE: 2.518492
 
-
-possibleDependencies = list('I(X_OpposingSupportersImpact^2)', 
-                            'X_RestTimeFromLastMatch', 
-                            'X_AvgPlayerValue',
-                            'X_MatchRelevance')
-dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
-lm.inspect(dependencyModel, 5)
-# RSquared: 0.8312, MSE: 2.331434
-
-
-possibleDependencies = list('I(X_MatchRelevance^2)', 
-                            'X_RestTimeFromLastMatch', 
-                            'X_AvgPlayerValue',
-                            'X_MatchRelevance')
-dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
-lm.inspect(dependencyModel, 5)
-# RSquared: 0.8373, MSE: 2.06893
-
-
-possibleDependencies = list('I(X_MatchRelevance^2)', 
-                            'X_RestTimeFromLastMatch', 
-                            'X_AvgPlayerValue')
-dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
-lm.inspect(dependencyModel, 5)
-# RSquared: 0.8355, MSE: 2.010979
-
-
-possibleDependencies = list('X_MatchRelevance', 
-                            'X_RestTimeFromLastMatch', 
-                            'X_Temperature*X_AvgPlayerValue')
-dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
-lm.inspect(dependencyModel, 10, 10)
-# RSquared: 0.8799, MSE: 1.734935
-
-
-possibleDependencies = list('I(X_MatchRelevance^2)', 
-                            'X_RestTimeFromLastMatch', 
-                            'X_Temperature*X_AvgPlayerValue')
-dependencyModel = lm.byFormulaChunks(ds, possibleDependencies)
-lm.inspect(dependencyModel, 10, 10)
-# RSquared: 0.8794, MSE: 1.756849
 
 
 #======================== INSPECT INTERACTIONS =============================
@@ -89,59 +84,40 @@ interactionMatrix = inspectInteractionMatrix(ds, default=baseRSquared, showHeatm
 
 #========================  TEST INTERACTIONS   =============================
 
-possibleDependencies = list('I(X_MatchRelevance^2)', 
-                            'X_RestTimeFromLastMatch', 
-                            'X_AvgPlayerValue')
+possibleDependencies = list("X_RestTimeFromLastMatch",
+                            "X_AvgPlayerValue",
+                            "X_MatchRelevance",
+                            "X_AvgGoalConcededLastMatches",
+                            "X_SupportersImpact",
+                            "X_OpposingSupportersImpact",
+                            'I(X_RestTimeFromLastMatch^2)') 
 
 
 
-possibleInteractions = list('X_Temperature*X_AvgPlayerValue')
+possibleInteractions = list(
+                          'X_SupportersImpact*X_AvgGoalConcededLastMatches',
+                          'X_OpposingSupportersImpact*X_Humidity',
+                          'X_OpposingSupportersImpact*X_Temperature',
+                          'X_Humidity*X_Temperature',
+                          'X_RestTimeFromLastMatch*X_MatchRelevance'
+                            )
 dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
 lm.inspect(dependencyModelWithPossibleInteractions, 5)
-# RSquared: 0.8794, MSE: 1.818143
-
-
-possibleInteractions = list('X_Temperature*X_AvgPlayerValue',
-                            'X_AvgGoalConcededLastMatches*X_AvgPlayerValue')
-dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
-lm.inspect(dependencyModelWithPossibleInteractions, 5)
-# RSquared: 0.8867, MSE: 1.887811
-
-
-possibleInteractions = list('X_AvgGoalConcededLastMatches*X_AvgPlayerValue')
-dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
-lm.inspect(dependencyModelWithPossibleInteractions, 5)
-# RSquared: 0.865, MSE: 1.936773
-
-
-possibleInteractions = list('X_Temperature*X_AvgPlayerValue',
-                            'X_AvgGoalConcededLastMatches*X_AvgPlayerValue', 
-                            'X_AvgPlayerValue*X_SupportersImpact')
-dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
-lm.inspect(dependencyModelWithPossibleInteractions, 5)
-# RSquared: 0.9076, MSE: 1.838917
-
-
-possibleInteractions = list('X_AvgGoalConcededLastMatches*X_AvgPlayerValue', 
-                            'X_AvgPlayerValue*X_SupportersImpact')
-dependencyModelWithPossibleInteractions = lm.byFormulaChunks(ds, append(possibleDependencies, possibleInteractions))
-lm.inspect(dependencyModelWithPossibleInteractions, 10)
-# RSquared: 0.8979, MSE: 1.423167 # BEST, da provare con l'intero dataset
+# RSquared: 0.993, MSE: 2.109674
 
 #====================  BEST SUBSET SELECTION WITH INTERACTIONS   ===============
 
 # add non linearities for best subset selection
 possibleRelationships = list(
-  'I(X_MatchRelevance^2)',
-  'I(X_OpposingSupportersImpact^2)',
-  'X_AvgPlayerValue*X_SupportersImpact',
-  'X_Temperature*X_AvgPlayerValue',
-  'X_AvgGoalConcededLastMatches*X_AvgPlayerValue', 
-  'X_AvgGoalConcededLastMatches*X_MatchRelevance', 
-  'X_AvgGoalConcededLastMatches*X_OpposingSupportersImpact'
+  'I(X_RestTimeFromLastMatch^2)',
+  'X_SupportersImpact*X_AvgGoalConcededLastMatches',
+  'X_OpposingSupportersImpact*X_Humidity',
+  'X_OpposingSupportersImpact*X_Temperature',
+  'X_Humidity*X_Temperature',
+  'X_RestTimeFromLastMatch*X_MatchRelevance'
 )    
 
-bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=10, folds=5, verbose=T, method="exhaustive")
+bestSubsets = bestSubsetSelection(ds, relationships=possibleRelationships, nMSE=5, folds=5, verbose=T, method="exhaustive")
 ds.prettyPlot(bestSubsets$MSE, xlab="Number of predictors", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
 
 bestSubset = bestSubsets$model[[which.min(bestSubsets$MSE)]]
@@ -166,19 +142,9 @@ N_PREDICTORS_TO_INSPECT = 5
 bestSubsets = bestSubsetsByPredictorsNumber(ds, relationships=possibleRelationships, nMSE=10, folds=5, nPredictors=N_PREDICTORS_TO_INSPECT, nSubsets=10, verbose=T)
 ds.prettyPlot(bestSubsets$MSE, xdata=unlist(map(bestSubsets$model, function(model) summary(model)$r.squared)), xlab="Rank", ylab="CV test MSE", title="5-fold cross-validation Test MSE")
 
-bestSubset = bestSubsets$model[[which.min(bestSubsets$MSE)]]
+bestSubset = bestSubsets$model[[8]]
 
 lm.inspect(bestSubset, 10, 10)
-
-#   BEST MODEL with less coefficients
-# 
-# Estimate Std. Error t value Pr(>|t|)    
-# (Intercept)                      1.1032     1.3973   0.790 0.435270    
-# X_RestTimeFromLastMatch          3.8572     0.6023   6.404 2.58e-07 ***
-#   X_MatchRelevance                11.4692     1.8258   6.282 3.72e-07 ***
-#   X_Temperature                   -5.0280     1.4540  -3.458 0.001482 ** 
-#   X_AvgPlayerValue                 4.5206     1.5966   2.831 0.007731 ** 
-#   X_Temperature:X_AvgPlayerValue   9.1283     2.4448   3.734 0.000689 ***
 
 
 #=================== FORWARD SELECTION WITH INTERACTIONS =======================
@@ -213,6 +179,7 @@ ds_scaled = addNonLinearities(ds, bestInteractions)
 lambda_grid = 10^seq(4, -6, length = 10000)
 
 models = lm.shrinkage(ds_scaled, lambda_grid, nMSE=10, folds=10, showPlot=T)
+min(models$lasso$cvm)
 coef(models$lasso$model, s = models$lasso$bestlambda)
 coef(models$ridge$model, s = models$ridge$bestlambda)
 
@@ -245,14 +212,6 @@ lm.plotElasticNet(alpha_grid, MSEs, best_mse)
 
 #======================= LINEAR REGRESSION - ISSUES =======================
 
-best_model = lm.byFormulaChunks(ds, list(
-  "X_RestTimeFromLastMatch",
-  "I(X_MatchRelevance^2)",
-  "X_Temperature",
-  "X_AvgPlayerValue",
-  "X_Temperature:X_AvgPlayerValue"
-))
-
 # the best model to analyze
 best_model = bestSubset # or any other (not glmnet model!)
 
@@ -279,20 +238,21 @@ outlier_indices = c(3)
 
 # x) refit ------------------------------------------------------------
 
-indices_to_be_removed = c(4,33)
+indices_to_be_removed = c(12, 44)
 
 if(length(indices_to_be_removed) > 0) {
   ds = ds[-indices_to_be_removed,]
 }
 best_model = lm.refit(best_model, ds)
 
-lm.inspect(best_model, 5, 5)
+lm.inspect(best_model, 10, 10)
 
 
 #======================= CONCLUSION =======================
 
-best_formula = "Y_MentalConcentration ~ X_RestTimeFromLastMatch + I(X_MatchRelevance^2) + 
-    X_Temperature + X_AvgPlayerValue + X_Temperature:X_AvgPlayerValue"
+best_formula = "Y_MentalConcentration ~ X_RestTimeFromLastMatch + X_AvgPlayerValue + 
+    X_MatchRelevance + X_OpposingSupportersImpact + I(X_RestTimeFromLastMatch^2) + 
+    X_SupportersImpact * X_AvgGoalConcededLastMatches"
 best_summary = '
 [1] "================= SUMMARY ================="
 
@@ -301,25 +261,27 @@ lm(formula = formula(model), data = data, x = T, y = T)
 
 Residuals:
     Min      1Q  Median      3Q     Max 
--1.8002 -0.7596 -0.1547  0.6618  1.8988 
+-2.6380 -0.9439 -0.1142  0.9234  3.7403 
 
 Coefficients:
-                               Estimate Std. Error t value Pr(>|t|)    
-(Intercept)                      2.3846     1.4094   1.692  0.10038    
-X_RestTimeFromLastMatch          3.7392     0.5408   6.914 7.93e-08 ***
-I(X_MatchRelevance^2)           13.5518     1.7901   7.570 1.27e-08 ***
-X_Temperature                   -3.7398     1.6351  -2.287  0.02894 *  
-X_AvgPlayerValue                 6.1223     1.7630   3.473  0.00150 ** 
-X_Temperature:X_AvgPlayerValue   7.2817     2.5192   2.890  0.00686 ** 
+                                                Estimate Std. Error t value Pr(>|t|)    
+(Intercept)                                       0.5762     0.2144   2.688 0.008584 ** 
+X_RestTimeFromLastMatch                           2.8401     0.1546  18.371  < 2e-16 ***
+X_AvgPlayerValue                                  9.1769     0.1511  60.741  < 2e-16 ***
+X_MatchRelevance                                  6.0275     0.1400  43.046  < 2e-16 ***
+X_OpposingSupportersImpact                       -3.0295     0.1535 -19.736  < 2e-16 ***
+I(X_RestTimeFromLastMatch^2)                     -0.5958     0.1730  -3.444 0.000877 ***
+X_SupportersImpact                                1.7301     0.1504  11.501  < 2e-16 ***
+X_AvgGoalConcededLastMatches                      4.1430     0.1553  26.674  < 2e-16 ***
+X_SupportersImpact:X_AvgGoalConcededLastMatches  -0.5393     0.1511  -3.570 0.000578 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 1.054 on 32 degrees of freedom
-Multiple R-squared:  0.9089,	Adjusted R-squared:  0.8946 
-F-statistic: 63.82 on 5 and 32 DF,  p-value: 1.068e-15
+Residual standard error: 1.413 on 89 degrees of freedom
+Multiple R-squared:  0.9912,	Adjusted R-squared:  0.9904 
+F-statistic:  1254 on 8 and 89 DF,  p-value: < 2.2e-16
 
 [1] "==================  MSE  =================="
-[1] 1.523344
+[1] 2.224745
 '
-best_model = lm(best_formula, data=ds)
 exportCOEF(best_model$coefficients)
